@@ -11,7 +11,7 @@ load_dotenv()
 
 app = FastAPI()
 
-TWILIO_NUMBER = "whatsapp:+14155238886"
+TWILIO_NUMBER = os.getenv('WHATSAPP_NUMBER')
 
 @app.post("/webhook")
 async def twilio_webhook(request: Request):
@@ -35,7 +35,7 @@ async def twilio_webhook(request: Request):
     print("person", person)
     print("company", company)
     print("message_kitta", message_kitta)
-    send_whatsapp(sender, "Found user, trying to login...")
+    
     user_row = next((row for row in sheet_data if row["name"].lower() == person), None)
     if not user_row:
         result = send_whatsapp(sender, f"❌ No info found for {person}.")
@@ -45,7 +45,6 @@ async def twilio_webhook(request: Request):
     
     try:
         token = login(user_row["clientId"], user_row["username"], user_row["password"])
-        send_whatsapp(sender, f"✅ login successfull for {person}, fetching applicable issues...")
         applicable_issues = get_applicable_issues()
         print("applicable_issues", applicable_issues)
         
@@ -64,8 +63,6 @@ async def twilio_webhook(request: Request):
             result = send_whatsapp(sender, already_filled_message)
             print(f"📱 WhatsApp send result: {result}")
             return Response(content="OK", media_type="text/plain")
-        
-        send_whatsapp(sender, f"✅ Found applicable issue: {selected_issue.get('scrip')} - {selected_issue.get('companyName')}")
         
         # Apply for IPO
         ipo_result = apply_ipo(token, {

@@ -184,6 +184,143 @@ def find_applicable_issue_by_company(applicable_issues: list, company_name: str)
     print(f"No matching issue found for company: {company_name}")
     return None
 
+def get_user_details():
+    """
+    Get user details (demat, boid, etc.) from CDSC API
+    """
+    if not cdsc_token:
+        raise Exception("Not authenticated. Please login first.")
+    
+    url = "https://webbackend.cdsc.com.np/api/meroShare/ownDetail/"
+    
+    headers = get_auth_headers()
+    
+    try:
+        response = requests.get(url, headers=headers, cookies=cdsc_cookies)
+        response.raise_for_status()
+        user_data = response.json()
+        
+        print(f"User details from CDSC API: {user_data}")
+        return user_data
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Get user details failed: {str(e)}")
+        if hasattr(e, 'response'):
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response text: {e.response.text}")
+        raise Exception(f"Get user details failed: {str(e)}")
+
+def get_bank_ids():
+    """
+    Get bank IDs from CDSC API
+    """
+    if not cdsc_token:
+        raise Exception("Not authenticated. Please login first.")
+    
+    url = "https://webbackend.cdsc.com.np/api/meroShare/bank/"
+    
+    headers = get_auth_headers()
+    
+    try:
+        response = requests.get(url, headers=headers, cookies=cdsc_cookies)
+        response.raise_for_status()
+        bank_data = response.json()
+        
+        print(f"Bank data from CDSC API: {bank_data}")
+        
+        # Extract bank IDs from the response
+        bank_ids = []
+        if isinstance(bank_data, list):
+            for bank in bank_data:
+                if isinstance(bank, dict) and "id" in bank:
+                    bank_ids.append(str(bank["id"]))
+        elif isinstance(bank_data, dict):
+            # Handle case where response might be wrapped in an object
+            if "object" in bank_data:
+                for bank in bank_data["object"]:
+                    if isinstance(bank, dict) and "id" in bank:
+                        bank_ids.append(str(bank["id"]))
+            elif "data" in bank_data:
+                for bank in bank_data["data"]:
+                    if isinstance(bank, dict) and "id" in bank:
+                        bank_ids.append(str(bank["id"]))
+        
+        print(f"Extracted bank IDs: {bank_ids}")
+        return bank_ids
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Get bank IDs failed: {str(e)}")
+        if hasattr(e, 'response'):
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response text: {e.response.text}")
+        raise Exception(f"Get bank IDs failed: {str(e)}")
+
+def get_account_details(bank_id):
+    """
+    Get account details from CDSC API for a specific bank
+    """
+    if not cdsc_token:
+        raise Exception("Not authenticated. Please login first.")
+    
+    url = f"https://webbackend.cdsc.com.np/api/meroShare/bank/{bank_id}"
+    
+    headers = get_auth_headers()
+    
+    try:
+        response = requests.get(url, headers=headers, cookies=cdsc_cookies)
+        response.raise_for_status()
+        account_data = response.json()
+        
+        print(f"Account data from CDSC API for bank {bank_id}: {account_data}")
+        
+        # Extract account details from the response
+        account_details = {}
+        
+        # Handle array response - always take the first object
+        if isinstance(account_data, list) and len(account_data) > 0:
+            first_account = account_data[0]
+            if isinstance(first_account, dict):
+                if "accountBranchId" in first_account:
+                    account_details["accountBranchId"] = str(first_account["accountBranchId"])
+                if "accountNumber" in first_account:
+                    account_details["accountNumber"] = str(first_account["accountNumber"])
+                if "accountTypeId" in first_account:
+                    account_details["accountTypeId"] = str(first_account["accountTypeId"])
+                if "id" in first_account:
+                    account_details["customerId"] = str(first_account["id"])
+        elif isinstance(account_data, dict):
+            # Handle different possible response structures
+            if "accountBranchId" in account_data:
+                account_details["accountBranchId"] = str(account_data["accountBranchId"])
+            if "accountNumber" in account_data:
+                account_details["accountNumber"] = str(account_data["accountNumber"])
+            if "accountTypeId" in account_data:
+                account_details["accountTypeId"] = str(account_data["accountTypeId"])
+            if "id" in account_data:
+                account_details["customerId"] = str(account_data["id"])
+            elif "object" in account_data:
+                # Handle case where data might be wrapped in object
+                obj_data = account_data["object"]
+                if isinstance(obj_data, dict):
+                    if "accountBranchId" in obj_data:
+                        account_details["accountBranchId"] = str(obj_data["accountBranchId"])
+                    if "accountNumber" in obj_data:
+                        account_details["accountNumber"] = str(obj_data["accountNumber"])
+                    if "accountTypeId" in obj_data:
+                        account_details["accountTypeId"] = str(obj_data["accountTypeId"])
+                    if "id" in obj_data:
+                        account_details["customerId"] = str(obj_data["id"])
+        
+        print(f"Extracted account details: {account_details}")
+        return account_details
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Get account details failed for bank {bank_id}: {str(e)}")
+        if hasattr(e, 'response'):
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response text: {e.response.text}")
+        raise Exception(f"Get account details failed for bank {bank_id}: {str(e)}")
+
 def apply_ipo(token, data, user_row, message_kitta=None):
     """
     Apply for IPO using CDSC API
@@ -195,6 +332,15 @@ def apply_ipo(token, data, user_row, message_kitta=None):
     url = "https://webbackend.cdsc.com.np/api/meroShare/applicantForm/share/apply"
     
     headers = get_auth_headers()
+    
+    # Get user details from CDSC API
+    user_details = get_user_details()
+    
+    # Get bank IDs from CDSC API
+    bank_ids = get_bank_ids()
+    
+    if not bank_ids:
+        raise Exception("No bank IDs available from CDSC API")
     
     # Determine appliedKitta with priority: message > sheet > default
     applied_kitta = "10"  # Default value
@@ -211,29 +357,48 @@ def apply_ipo(token, data, user_row, message_kitta=None):
     else:
         print(f"Using kitta from sheet: {applied_kitta}")
     
-    application_data = {
-        "demat": f'{user_row["demat"]}',
-        "boid": f'{user_row["username"]}',  # boid is the username field
-        "accountNumber": f'{user_row["accountNumber"]}',
-        "customerId": user_row["customerId"],
-        "accountBranchId": user_row["accountBranchId"],
-        "accountTypeId": user_row["accountTypeId"],
-        "appliedKitta": f'{applied_kitta}',
-        "crnNumber": f'{user_row["crnNumber"]}',  # CRN in quotes
-        "transactionPIN": f'{user_row["transactionPIN"]}',
-        "companyShareId": f'{str(data["companyShareId"])}',  # Convert to string
-        "bankId": f'{user_row["bankId"]}'
-    }
+    # Try each bank ID until one succeeds
+    for bank_id in bank_ids:
+        print(f"Trying with bank ID: {bank_id}")
+        
+        try:
+            # Get account details for this specific bank
+            account_details = get_account_details(bank_id)
+            
+            # Use demat and boid from CDSC API instead of sheet
+            application_data = {
+                "demat": f'{user_details.get("demat", "")}',
+                "boid": f'{user_details.get("boid", "")}',
+                "accountNumber": account_details.get("accountNumber", ""),
+                "customerId": account_details.get("customerId", ""),
+                "accountBranchId": account_details.get("accountBranchId", ""),
+                "accountTypeId": account_details.get("accountTypeId", ""),
+                "appliedKitta": f'{applied_kitta}',
+                "crnNumber": f'{user_row["crnNumber"]}',  # CRN in quotes
+                "transactionPIN": f'{user_row["transactionPIN"]}',
+                "companyShareId": f'{str(data["companyShareId"])}',  # Convert to string
+                "bankId": bank_id
+            }
+            
+            print(f"Applying IPO with data: {application_data}")
+            
+            response = requests.post(url, json=application_data, headers=headers, cookies=cdsc_cookies)
+            response.raise_for_status()
+            print(f"IPO Application successful with bank ID: {bank_id}")
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"IPO Application failed with bank ID {bank_id}: {str(e)}")
+            if hasattr(e, 'response'):
+                print(f"Response status: {e.response.status_code}")
+                print(f"Response text: {e.response.text}")
+            
+            # If this is the last bank ID, raise the exception
+            if bank_id == bank_ids[-1]:
+                raise Exception(f"IPO Application failed with all bank IDs: {str(e)}")
+            else:
+                print(f"Trying next bank ID...")
+                continue
     
-    print(f"Applying IPO with data: {application_data}")
-    
-    try:
-        response = requests.post(url, json=application_data, headers=headers, cookies=cdsc_cookies)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"IPO Application failed: {str(e)}")
-        if hasattr(e, 'response'):
-            print(f"Response status: {e.response.status_code}")
-            print(f"Response text: {e.response.text}")
-        raise Exception(f"IPO Application failed: {str(e)}")
+    # This should not be reached, but just in case
+    raise Exception("No bank IDs available for IPO application")
