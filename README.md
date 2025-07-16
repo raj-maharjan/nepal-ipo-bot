@@ -84,6 +84,32 @@ TELEGRAM_CHAT_ID=your_telegram_chat_id
 uvicorn main:app --reload
 ```
 
+### 9. GitHub Actions Setup (Optional)
+For automated IPO applications, set up GitHub Actions:
+
+1. **Create GitHub Secrets:**
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Add the following secrets:
+     - `WEBHOOK_URL`: Your deployed app URL (e.g., `https://your-domain.com`)
+     - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token
+     - `TELEGRAM_CHAT_ID`: Your Telegram chat ID
+     - `GOOGLE_SHEETS_CREDENTIALS`: Your Google service account JSON (for multi-user workflow)
+
+2. **Choose Workflow:**
+   - **Single User**: Uses `ipo-scheduler.yml` (applies for one user)
+   - **Multi-User**: Uses `ipo-scheduler-multi-user.yml` (applies for all users in sheet)
+
+3. **Schedule:**
+   - Runs at 9:30 PM NPT every 2 hours
+   - Can be manually triggered via GitHub Actions tab
+   - Sends Telegram notifications with results
+
+4. **Manual Trigger:**
+   - Go to Actions tab in GitHub
+   - Select the workflow
+   - Click "Run workflow"
+   - Enter user name (optional for multi-user)
+
 ## Usage
 - Send a WhatsApp message to your Twilio sandbox number in one of the following formats:
   - `apply ipo for john in himstar`
