@@ -9,7 +9,7 @@ on:
       user_name:
         description: 'User name to apply IPOs for'
         required: true
-        default: 'john'
+        default: 'raj'
         type: string
 
 jobs:
