@@ -3,7 +3,7 @@ name: IPO Application Scheduler
 on:
   schedule:
     # Run at 9:45 PM NPT every 24 hours (NPT is UTC+5:45, so 9:45 PM NPT = 16:00 UTC)
-    - cron: '0 16 * * *'
+    - cron: '20 16 * * *'
   workflow_dispatch:
     inputs:
       user_name:
