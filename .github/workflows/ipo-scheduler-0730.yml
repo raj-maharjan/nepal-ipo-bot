@@ -1,0 +1,150 @@
+name: IPO Application Scheduler - 7:30 PM
+
+on:
+  schedule:
+    # Run at 7:30 PM NPT every 24 hours (13:45 UTC)
+    - cron: '45 13 * * *'
+  workflow_dispatch:
+    inputs:
+      user_name:
+        description: 'User name to apply IPOs for'
+        required: true
+        default: 'user7'
+        type: string
+
+jobs:
+  apply-ipos:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+    
+    - name: Apply IPOs for user7
+      env:
+        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        USER_NAME: ${{ secrets.USER7_NAME }}
+      run: |
+        python -c "
+        import requests
+        import os
+        import json
+        from datetime import datetime
+        
+        webhook_url = os.getenv('WEBHOOK_URL')
+        telegram_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+        user_name = os.getenv('USER_NAME')
+        
+        if not webhook_url:
+            print('❌ WEBHOOK_URL not set')
+            exit(1)
+        
+        if not user_name:
+            print('❌ USER_NAME not set')
+            exit(1)
+        
+        # Get user name from workflow dispatch or use secret
+        user_name = '${{ github.event.inputs.user_name }}' if '${{ github.event.inputs.user_name }}' else user_name
+        
+        print(f'🚀 Starting IPO application for user: {user_name}')
+        print(f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}')
+        
+        try:
+            # Call the webhook
+            response = requests.post(
+                f'{webhook_url}/apply',
+                json={'user_name': user_name},
+                headers={'Content-Type': 'application/json'},
+                timeout=300  # 5 minutes timeout
+            )
+            
+            print(f'📡 Response Status: {response.status_code}')
+            print(f'📡 Response: {response.text}')
+            
+            if response.status_code == 200:
+                result = response.json()
+                print('✅ IPO application completed successfully')
+                
+                # Send Telegram notification
+                if telegram_token and telegram_chat_id:
+                    notification = f'🤖 GitHub Action: IPO Application Complete\n\n'
+                    notification += f'👤 User: {user_name}\n'
+                    notification += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n\n'
+                    notification += f'📊 Results:\n'
+                    notification += f'• Successfully Applied: {result.get(\"total_applied\", 0)}\n'
+                    notification += f'• Failed Applications: {result.get(\"total_failed\", 0)}\n'
+                    
+                    if result.get('applied_issues'):
+                        notification += '\n✅ Applied Issues:\n'
+                        for issue in result['applied_issues']:
+                            notification += f'• {issue[\"scrip\"]} - {issue[\"company\"]}\n'
+                    
+                    if result.get('failed_issues'):
+                        notification += '\n❌ Failed Issues:\n'
+                        for issue in result['failed_issues']:
+                            notification += f'• {issue[\"scrip\"]} - {issue[\"company\"]} ({issue[\"reason\"]})\n'
+                    
+                    telegram_response = requests.post(
+                        f'https://api.telegram.org/bot{telegram_token}/sendMessage',
+                        json={
+                            'chat_id': telegram_chat_id,
+                            'text': notification,
+                            'parse_mode': 'HTML'
+                        }
+                    )
+                    
+                    if telegram_response.status_code == 200:
+                        print('✅ Telegram notification sent')
+                    else:
+                        print(f'❌ Failed to send Telegram notification: {telegram_response.status_code}')
+                else:
+                    print('⚠️ Telegram credentials not configured')
+                    
+            else:
+                print(f'❌ IPO application failed with status: {response.status_code}')
+                error_msg = f'❌ GitHub Action: IPO Application Failed\n\n'
+                error_msg += f'👤 User: {user_name}\n'
+                error_msg += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n'
+                error_msg += f'📡 Status: {response.status_code}\n'
+                error_msg += f'📄 Response: {response.text}'
+                
+                if telegram_token and telegram_chat_id:
+                    requests.post(
+                        f'https://api.telegram.org/bot{telegram_token}/sendMessage',
+                        json={
+                            'chat_id': telegram_chat_id,
+                            'text': error_msg,
+                            'parse_mode': 'HTML'
+                        }
+                    )
+                
+        except Exception as e:
+            print(f'❌ Exception occurred: {str(e)}')
+            error_msg = f'❌ GitHub Action: Exception Occurred\n\n'
+            error_msg += f'👤 User: {user_name}\n'
+            error_msg += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n'
+            error_msg += f'💥 Error: {str(e)}'
+            
+            if telegram_token and telegram_chat_id:
+                requests.post(
+                    f'https://api.telegram.org/bot{telegram_token}/sendMessage',
+                    json={
+                        'chat_id': telegram_chat_id,
+                        'text': error_msg,
+                        'parse_mode': 'HTML'
+                    }
+                )
+        " 
