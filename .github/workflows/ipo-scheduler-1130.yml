@@ -1,15 +1,15 @@
-name: IPO Application Scheduler
+name: IPO Application Scheduler - 11:30 AM
 
 on:
   schedule:
-    # Run at 9:45 PM NPT every 24 hours (NPT is UTC+5:45, so 9:45 PM NPT = 16:00 UTC)
-    - cron: '0 16 * * *'
+    # Run at 11:30 AM NPT every 24 hours (5:45 UTC)
+    - cron: '45 5 * * *'
   workflow_dispatch:
     inputs:
       user_name:
         description: 'User name to apply IPOs for'
         required: true
-        default: 'raj'
+        default: 'user1'
         type: string
 
 jobs:
@@ -30,11 +30,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
     
-    - name: Apply IPOs for all users
+    - name: Apply IPOs for user1
       env:
         WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        USER_NAME: ${{ secrets.USER1_NAME }}
       run: |
         python -c "
         import requests
@@ -45,13 +46,18 @@ jobs:
         webhook_url = os.getenv('WEBHOOK_URL')
         telegram_token = os.getenv('TELEGRAM_BOT_TOKEN')
         telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+        user_name = os.getenv('USER_NAME')
         
         if not webhook_url:
             print('❌ WEBHOOK_URL not set')
             exit(1)
         
-        # Get user name from workflow dispatch or use default
-        user_name = '${{ github.event.inputs.user_name }}' if '${{ github.event.inputs.user_name }}' else 'john'
+        if not user_name:
+            print('❌ USER_NAME not set')
+            exit(1)
+        
+        # Get user name from workflow dispatch or use secret
+        user_name = '${{ github.event.inputs.user_name }}' if '${{ github.event.inputs.user_name }}' else user_name
         
         print(f'🚀 Starting IPO application for user: {user_name}')
         print(f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}')
