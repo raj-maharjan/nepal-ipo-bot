@@ -4,6 +4,7 @@ A FastAPI-based bot that automates IPO applications for users via WhatsApp using
 
 ## Features
 - **WhatsApp Integration:** Users can apply for IPOs by sending WhatsApp messages.
+- **Telegram Notifications:** Receive detailed notifications about IPO application results via Telegram.
 - **Fuzzy Search:** Finds applicable IPO issues using fuzzy matching on company names.
 - **Google Sheets Integration:** Reads user credentials and info from a Google Sheet.
 - **CDSC API Automation:** Logs in and applies for IPOs automatically.
@@ -46,9 +47,28 @@ Create a `.env` file in the project root with the following:
 ```
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_CHAT_ID=your_telegram_chat_id
 ```
 
-### 6. Twilio WhatsApp Setup
+### 6. Telegram Setup (Optional)
+1. Create a Telegram bot:
+   - Message [@BotFather](https://t.me/botfather) on Telegram
+   - Send `/newbot` command
+   - Follow the instructions to create your bot
+   - Save the bot token provided by BotFather
+2. Get your Chat ID:
+   - Message your bot or add it to a group
+   - Send a message to the bot
+   - Visit `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Find your chat_id in the response
+3. Add the credentials to your `.env` file:
+   ```
+   TELEGRAM_BOT_TOKEN=your_bot_token_here
+   TELEGRAM_CHAT_ID=your_chat_id_here
+   ```
+
+### 7. Twilio WhatsApp Setup
 1. Sign up or log in to [Twilio](https://www.twilio.com/).
 2. Go to the [Twilio Console](https://console.twilio.com/).
 3. Get your Account SID and Auth Token.
@@ -59,7 +79,7 @@ TWILIO_AUTH_TOKEN=your_twilio_auth_token
 5. Set the sandbox number in your code (already set as `TWILIO_NUMBER` in `main.py`).
 6. Set your webhook URL in the Twilio Console to point to your server's `/webhook` endpoint (e.g., `https://your-domain.com/webhook`).
 
-### 7. Run the Bot
+### 8. Run the Bot
 ```bash
 uvicorn main:app --reload
 ```

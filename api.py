@@ -65,7 +65,9 @@ def get_auth_headers():
 
 def get_applicable_issues():
     """
-    Get applicable issues from CDSC API
+    Get applicable issues from CDSC API and filter by required criteria.
+    Filters by shareGroupName = "Ordinary Shares", statusName = "CREATE_APPROVE", 
+    and shareTypeName in ("IPO", "FPO", "RESERVED").
     """
     if not cdsc_token:
         raise Exception("Not authenticated. Please login first.")
@@ -83,27 +85,59 @@ def get_applicable_issues():
         
         # Extract the actual issues from the response
         # The response has a structure like {"object": [...], "totalCount": 0}
+        raw_issues = []
         if isinstance(response_data, dict):
             if "object" in response_data:
                 print(f"Found issues in 'object' key: {len(response_data['object'])} issues")
-                return response_data["object"]
+                raw_issues = response_data["object"]
             elif "data" in response_data:
-                return response_data["data"]
+                raw_issues = response_data["data"]
             elif "content" in response_data:
-                return response_data["content"]
+                raw_issues = response_data["content"]
             elif "items" in response_data:
-                return response_data["items"]
+                raw_issues = response_data["items"]
             elif "results" in response_data:
-                return response_data["results"]
+                raw_issues = response_data["results"]
             else:
                 # If no known structure, return the whole response
                 print(f"Unknown response structure, keys: {list(response_data.keys())}")
-                return response_data
+                raw_issues = response_data
         elif isinstance(response_data, list):
-            return response_data
+            raw_issues = response_data
         else:
             print(f"Unexpected response format: {type(response_data)}")
             return response_data
+        
+        # Filter issues by required criteria
+        filtered_issues = []
+        print(f"Total issues to filter: {len(raw_issues)}")
+        for issue in raw_issues:
+            # Check if it's a dictionary and has required fields
+            if not isinstance(issue, dict):
+                print(f"Skipping non-dict issue: {type(issue)}")
+                continue
+                
+            # Filter by shareGroupName = "Ordinary Shares"
+            if issue.get("shareGroupName") != "Ordinary Shares":
+                print(f"Skipping issue - shareGroupName: {issue.get('shareGroupName')} (expected: Ordinary Shares)")
+                continue
+                
+            # Filter by statusName = "CREATE_APPROVE"
+            if issue.get("statusName") != "CREATE_APPROVE":
+                print(f"Skipping issue - statusName: {issue.get('statusName')} (expected: CREATE_APPROVE)")
+                continue
+                
+            # Filter by shareTypeName in ("IPO", "FPO", "RESERVED")
+            share_type_name = issue.get("shareTypeName", "")
+            if share_type_name not in ("IPO", "FPO", "RESERVED"):
+                print(f"Skipping issue - shareTypeName: {share_type_name} (expected: IPO, FPO, or RESERVED)")
+                continue
+                
+            filtered_issues.append(issue)
+            print(f"Added filtered issue: {issue.get('scrip')} - {issue.get('companyName')} - {share_type_name}")
+        
+        print(f"Returning {len(filtered_issues)} filtered issues")
+        return filtered_issues
             
     except requests.exceptions.RequestException as e:
         print(f"Get applicable issues failed: {str(e)}")
@@ -115,10 +149,10 @@ def get_applicable_issues():
 def find_applicable_issue_by_company(applicable_issues: list, company_name: str) -> Optional[Dict[str, Any]]:
     """
     Find applicable issue by company name using simple keyword matching.
-    Filters by shareGroupName = "Ordinary Shares" and statusName = "CREATE_APPROVE".
+    Issues are already filtered by get_applicable_issues() function.
     
     Args:
-        applicable_issues: List of applicable issues from API
+        applicable_issues: List of applicable issues from API (already filtered)
         company_name: Company name to search for
     
     Returns:
@@ -143,42 +177,12 @@ def find_applicable_issue_by_company(applicable_issues: list, company_name: str)
         print(f"No applicable issues found or invalid format. Type: {type(applicable_issues)}")
         return None
     
-    # Filter issues by required criteria
-    filtered_issues = []
-    print(f"Total issues to filter: {len(applicable_issues)}")
-    for issue in applicable_issues:
-        # Check if it's a dictionary and has required fields
-        if not isinstance(issue, dict):
-            print(f"Skipping non-dict issue: {type(issue)}")
-            continue
-            
-        # Filter by shareGroupName = "Ordinary Shares"
-        if issue.get("shareGroupName") != "Ordinary Shares":
-            print(f"Skipping issue - shareGroupName: {issue.get('shareGroupName')} (expected: Ordinary Shares)")
-            continue
-            
-        # Filter by statusName = "CREATE_APPROVE"
-        if issue.get("statusName") != "CREATE_APPROVE":
-            print(f"Skipping issue - statusName: {issue.get('statusName')} (expected: CREATE_APPROVE)")
-            continue
-            
-        # Filter by shareTypeName in ("IPO", "FPO", "RESERVED")
-        share_type_name = issue.get("shareTypeName", "")
-        if share_type_name not in ("IPO", "FPO", "RESERVED"):
-            print(f"Skipping issue - shareTypeName: {share_type_name} (expected: IPO, FPO, or RESERVED)")
-            continue
-            
-        filtered_issues.append(issue)
-        print(f"Added filtered issue: {issue.get('scrip')} - {issue.get('companyName')} - {share_type_name}")
-    
-    if not filtered_issues:
-        print("No issues found matching the required filters (Ordinary Shares, CREATE_APPROVE)")
-        return None
+    print(f"Searching through {len(applicable_issues)} filtered issues for company: {company_name}")
     
     # Simple keyword search on scrip and companyName
     search_company = company_name.lower()
     
-    for issue in filtered_issues:
+    for issue in applicable_issues:
         scrip = issue.get("scrip", "").lower()
         company_name_issue = issue.get("companyName", "").lower()
         

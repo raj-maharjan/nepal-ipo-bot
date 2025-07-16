@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Request, Response
+from pydantic import BaseModel
 from sheets import get_sheet_data
 from parser import extract_person_company_and_kitta
 from api import login, apply_ipo, get_applicable_issues, find_applicable_issue_by_company
 import requests
 import os
 from dotenv import load_dotenv
+from typing import Dict, Any
 
 # Load environment variables
 load_dotenv()
@@ -12,6 +14,11 @@ load_dotenv()
 app = FastAPI()
 
 TWILIO_NUMBER = os.getenv('WHATSAPP_NUMBER')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
+class ApplyRequest(BaseModel):
+    user_name: str
 
 @app.post("/webhook")
 async def twilio_webhook(request: Request):
@@ -78,6 +85,251 @@ async def twilio_webhook(request: Request):
         result = send_whatsapp(sender, f"❌ Error: {str(e)}")
         print(f"📱 WhatsApp send result: {result}")
         return Response(content="OK", media_type="text/plain")
+
+@app.post("/apply")
+async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
+    """
+    Apply for all applicable IPO issues for a given user.
+    Takes user_name as input and applies for all available IPOs.
+    """
+    user_name = request.user_name
+    sheet_data = get_sheet_data()
+    known_people = [row["name"].lower() for row in sheet_data]
+    
+    # Find user in sheet data
+    user_row = next((row for row in sheet_data if row["name"].lower() == user_name.lower()), None)
+    if not user_row:
+        return {
+            "status": "error",
+            "message": f"No info found for user: {user_name}",
+            "applied_issues": [],
+            "failed_issues": []
+        }
+    
+    print(f"Found user: {user_name}")
+    print(f"User row: {user_row}")
+    
+    try:
+        # Login to CDSC
+        token = login(user_row["clientId"], user_row["username"], user_row["password"])
+        applicable_issues = get_applicable_issues()
+        print(f"Found {len(applicable_issues) if isinstance(applicable_issues, list) else 'unknown'} applicable issues")
+        
+        applied_issues = []
+        failed_issues = []
+        
+        # Process each applicable issue (already filtered by API)
+        if isinstance(applicable_issues, list):
+            for issue in applicable_issues:
+                try:
+                    print(f"Processing issue: {issue.get('scrip')} - {issue.get('companyName')}")
+                    
+                    # Check if IPO is already in process
+                    if issue.get("action") == "inProcess":
+                        print(f"⚠️ Already filled IPO for {issue.get('companyName')} ({issue.get('scrip')})")
+                        failed_issues.append({
+                            "company": issue.get('companyName'),
+                            "scrip": issue.get('scrip'),
+                            "reason": "Already in process"
+                        })
+                        continue
+                    
+                    # Apply for IPO
+                    ipo_result = apply_ipo(token, {
+                        "companyShareId": issue["companyShareId"]
+                    }, user_row)
+                    
+                    print(f"✅ Successfully applied for {issue.get('scrip')} ({issue.get('companyName')})")
+                    applied_issues.append({
+                        "company": issue.get('companyName'),
+                        "scrip": issue.get('scrip'),
+                        "result": ipo_result
+                    })
+                    
+                except Exception as e:
+                    print(f"❌ Failed to apply for {issue.get('scrip', 'unknown')}: {str(e)}")
+                    failed_issues.append({
+                        "company": issue.get('companyName'),
+                        "scrip": issue.get('scrip'),
+                        "reason": str(e)
+                    })
+        
+        return {
+            "status": "success",
+            "message": f"Processed {len(applied_issues)} successful applications and {len(failed_issues)} failures",
+            "applied_issues": applied_issues,
+            "failed_issues": failed_issues,
+            "total_applied": len(applied_issues),
+            "total_failed": len(failed_issues)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in apply_all_issues: {str(e)}")
+        error_message = f"❌ Error in apply_all_issues for {user_name}: {str(e)}"
+        send_telegram(error_message)
+        return {
+            "status": "error",
+            "message": f"Error: {str(e)}",
+            "applied_issues": [],
+            "failed_issues": []
+        }
+    
+    # Send completion notification
+    completion_message = f"✅ IPO Application Complete for {user_name}\n\n"
+    completion_message += f"📊 Results:\n"
+    completion_message += f"• Successfully Applied: {len(applied_issues)}\n"
+    completion_message += f"• Failed Applications: {len(failed_issues)}\n\n"
+    
+    if applied_issues:
+        completion_message += "✅ Applied Issues:\n"
+        for issue in applied_issues:
+            completion_message += f"• {issue['scrip']} - {issue['company']}\n"
+    
+    if failed_issues:
+        completion_message += "\n❌ Failed Issues:\n"
+        for issue in failed_issues:
+            completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
+    
+    send_telegram(completion_message)
+
+@app.get("/apply/{user_name}")
+async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
+    """
+    Apply for all applicable IPO issues for a given user (GET endpoint).
+    Takes user_name as path parameter and applies for all available IPOs.
+    """
+    sheet_data = get_sheet_data()
+    known_people = [row["name"].lower() for row in sheet_data]
+    
+    # Find user in sheet data
+    user_row = next((row for row in sheet_data if row["name"].lower() == user_name.lower()), None)
+    if not user_row:
+        return {
+            "status": "error",
+            "message": f"No info found for user: {user_name}",
+            "applied_issues": [],
+            "failed_issues": []
+        }
+    
+    print(f"Found user: {user_name}")
+    print(f"User row: {user_row}")
+    
+    try:
+        # Login to CDSC
+        token = login(user_row["clientId"], user_row["username"], user_row["password"])
+        applicable_issues = get_applicable_issues()
+        print(f"Found {len(applicable_issues) if isinstance(applicable_issues, list) else 'unknown'} applicable issues")
+        
+        applied_issues = []
+        failed_issues = []
+        
+        # Process each applicable issue (already filtered by API)
+        if isinstance(applicable_issues, list):
+            for issue in applicable_issues:
+                try:
+                    print(f"Processing issue: {issue.get('scrip')} - {issue.get('companyName')}")
+                    
+                    # Check if IPO is already in process
+                    if issue.get("action") == "inProcess":
+                        print(f"⚠️ Already filled IPO for {issue.get('companyName')} ({issue.get('scrip')})")
+                        failed_issues.append({
+                            "company": issue.get('companyName'),
+                            "scrip": issue.get('scrip'),
+                            "reason": "Already in process"
+                        })
+                        continue
+                    
+                    # Apply for IPO
+                    ipo_result = apply_ipo(token, {
+                        "companyShareId": issue["companyShareId"]
+                    }, user_row)
+                    
+                    print(f"✅ Successfully applied for {issue.get('scrip')} ({issue.get('companyName')})")
+                    applied_issues.append({
+                        "company": issue.get('companyName'),
+                        "scrip": issue.get('scrip'),
+                        "result": ipo_result
+                    })
+                    
+                except Exception as e:
+                    print(f"❌ Failed to apply for {issue.get('scrip', 'unknown')}: {str(e)}")
+                    failed_issues.append({
+                        "company": issue.get('companyName'),
+                        "scrip": issue.get('scrip'),
+                        "reason": str(e)
+                    })
+        
+        return {
+            "status": "success",
+            "message": f"Processed {len(applied_issues)} successful applications and {len(failed_issues)} failures",
+            "applied_issues": applied_issues,
+            "failed_issues": failed_issues,
+            "total_applied": len(applied_issues),
+            "total_failed": len(failed_issues)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in apply_all_issues: {str(e)}")
+        error_message = f"❌ Error in apply_all_issues for {user_name}: {str(e)}"
+        send_telegram(error_message)
+        return {
+            "status": "error",
+            "message": f"Error: {str(e)}",
+            "applied_issues": [],
+            "failed_issues": []
+        }
+    
+    # Send completion notification
+    completion_message = f"✅ IPO Application Complete for {user_name}\n\n"
+    completion_message += f"📊 Results:\n"
+    completion_message += f"• Successfully Applied: {len(applied_issues)}\n"
+    completion_message += f"• Failed Applications: {len(failed_issues)}\n\n"
+    
+    if applied_issues:
+        completion_message += "✅ Applied Issues:\n"
+        for issue in applied_issues:
+            completion_message += f"• {issue['scrip']} - {issue['company']}\n"
+    
+    if failed_issues:
+        completion_message += "\n❌ Failed Issues:\n"
+        for issue in failed_issues:
+            completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
+    
+    send_telegram(completion_message)
+
+def send_telegram(message: str) -> Dict[str, Any]:
+    """
+    Send message via Telegram bot
+    """
+    try:
+        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+            print("❌ Missing Telegram credentials in environment variables")
+            return {"status": "error", "message": "Missing Telegram credentials"}
+        
+        print(f"📤 Sending Telegram message: {message}")
+        
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message,
+            "parse_mode": "HTML"
+        }
+        
+        response = requests.post(url, json=payload)
+        
+        print(f"📡 Telegram API Response Status: {response.status_code}")
+        print(f"📡 Telegram API Response: {response.text}")
+        
+        if response.status_code == 200:
+            print("✅ Telegram message sent successfully")
+            return {"status": "success", "message": message}
+        else:
+            print(f"❌ Failed to send Telegram message. Status: {response.status_code}")
+            return {"status": "error", "message": f"API Error: {response.status_code}"}
+            
+    except Exception as e:
+        print(f"❌ Exception in send_telegram: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
 def send_whatsapp(to, message):
     try:
