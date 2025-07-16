@@ -162,8 +162,14 @@ def find_applicable_issue_by_company(applicable_issues: list, company_name: str)
             print(f"Skipping issue - statusName: {issue.get('statusName')} (expected: CREATE_APPROVE)")
             continue
             
+        # Filter by shareTypeName in ("IPO", "FPO", "RESERVED")
+        share_type_name = issue.get("shareTypeName", "")
+        if share_type_name not in ("IPO", "FPO", "RESERVED"):
+            print(f"Skipping issue - shareTypeName: {share_type_name} (expected: IPO, FPO, or RESERVED)")
+            continue
+            
         filtered_issues.append(issue)
-        print(f"Added filtered issue: {issue.get('scrip')} - {issue.get('companyName')}")
+        print(f"Added filtered issue: {issue.get('scrip')} - {issue.get('companyName')} - {share_type_name}")
     
     if not filtered_issues:
         print("No issues found matching the required filters (Ordinary Shares, CREATE_APPROVE)")
