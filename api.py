@@ -380,7 +380,7 @@ def apply_ipo(token, data, user_row, message_kitta=None):
                 "accountBranchId": account_details.get("accountBranchId", ""),
                 "accountTypeId": account_details.get("accountTypeId", ""),
                 "appliedKitta": f'{applied_kitta}',
-                "crnNumber": f'{user_row["crnNumber"]}',  # CRN in quotes
+                "crnNumber": str(user_row["crnNumber"]),  # CRN as string with leading zeros preserved
                 "transactionPIN": f'{user_row["transactionPIN"]}',
                 "companyShareId": f'{str(data["companyShareId"])}',  # Convert to string
                 "bankId": bank_id
