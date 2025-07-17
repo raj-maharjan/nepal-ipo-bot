@@ -119,7 +119,7 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
         failed_issues = []
         
         # Process each applicable issue (already filtered by API)
-        if isinstance(applicable_issues, list):
+        if isinstance(applicable_issues, list) and len(applicable_issues) > 0:
             for issue in applicable_issues:
                 try:
                     print(f"Processing issue: {issue.get('scrip')} - {issue.get('companyName')}")
@@ -153,15 +153,41 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
                         "scrip": issue.get('scrip'),
                         "reason": str(e)
                     })
-        
-        return {
-            "status": "success",
-            "message": f"Processed {len(applied_issues)} successful applications and {len(failed_issues)} failures",
-            "applied_issues": applied_issues,
-            "failed_issues": failed_issues,
-            "total_applied": len(applied_issues),
-            "total_failed": len(failed_issues)
-        }
+            
+            # Send completion notification
+            completion_message = f"✅ IPO Application Complete for {user_name}\n\n"
+            completion_message += f"📊 Results:\n"
+            completion_message += f"• Successfully Applied: {len(applied_issues)}\n"
+            completion_message += f"• Failed Applications: {len(failed_issues)}\n\n"
+            if applied_issues:
+                completion_message += "✅ Applied Issues:\n"
+                for issue in applied_issues:
+                    completion_message += f"• {issue['scrip']} - {issue['company']}\n"
+            if failed_issues:
+                completion_message += "\n❌ Failed Issues:\n"
+                for issue in failed_issues:
+                    completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
+            send_telegram(completion_message)
+            return {
+                "status": "success",
+                "message": f"Processed {len(applied_issues)} successful applications and {len(failed_issues)} failures",
+                "applied_issues": applied_issues,
+                "failed_issues": failed_issues,
+                "total_applied": len(applied_issues),
+                "total_failed": len(failed_issues)
+            }
+        else:
+            # No applicable issues found
+            print(f"ℹ️ No applicable issues found for {user_name}")
+            send_telegram(f"ℹ️ No applicable IPO issue found for {user_name}.")
+            return {
+                "status": "success",
+                "message": "No applicable issues found",
+                "applied_issues": [],
+                "failed_issues": [],
+                "total_applied": 0,
+                "total_failed": 0
+            }
         
     except Exception as e:
         print(f"❌ Error in apply_all_issues: {str(e)}")
@@ -224,7 +250,7 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
         failed_issues = []
         
         # Process each applicable issue (already filtered by API)
-        if isinstance(applicable_issues, list):
+        if isinstance(applicable_issues, list) and len(applicable_issues) > 0:
             for issue in applicable_issues:
                 try:
                     print(f"Processing issue: {issue.get('scrip')} - {issue.get('companyName')}")
@@ -258,15 +284,41 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
                         "scrip": issue.get('scrip'),
                         "reason": str(e)
                     })
-        
-        return {
-            "status": "success",
-            "message": f"Processed {len(applied_issues)} successful applications and {len(failed_issues)} failures",
-            "applied_issues": applied_issues,
-            "failed_issues": failed_issues,
-            "total_applied": len(applied_issues),
-            "total_failed": len(failed_issues)
-        }
+            
+            # Send completion notification
+            completion_message = f"✅ IPO Application Complete for {user_name}\n\n"
+            completion_message += f"📊 Results:\n"
+            completion_message += f"• Successfully Applied: {len(applied_issues)}\n"
+            completion_message += f"• Failed Applications: {len(failed_issues)}\n\n"
+            if applied_issues:
+                completion_message += "✅ Applied Issues:\n"
+                for issue in applied_issues:
+                    completion_message += f"• {issue['scrip']} - {issue['company']}\n"
+            if failed_issues:
+                completion_message += "\n❌ Failed Issues:\n"
+                for issue in failed_issues:
+                    completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
+            send_telegram(completion_message)
+            return {
+                "status": "success",
+                "message": f"Processed {len(applied_issues)} successful applications and {len(failed_issues)} failures",
+                "applied_issues": applied_issues,
+                "failed_issues": failed_issues,
+                "total_applied": len(applied_issues),
+                "total_failed": len(failed_issues)
+            }
+        else:
+            # No applicable issues found
+            print(f"ℹ️ No applicable issues found for {user_name}")
+            send_telegram(f"ℹ️ No applicable IPO issue found for {user_name}.")
+            return {
+                "status": "success",
+                "message": "No applicable issues found",
+                "applied_issues": [],
+                "failed_issues": [],
+                "total_applied": 0,
+                "total_failed": 0
+            }
         
     except Exception as e:
         print(f"❌ Error in apply_all_issues: {str(e)}")
