@@ -23,6 +23,27 @@ def login(client_id, username, password):
         response = requests.post(url, json=payload)
         response.raise_for_status()
         
+        # Parse response to check for expiration issues
+        response_data = response.json()
+        
+        # Check for password expiration
+        if response_data.get("passwordExpired", False):
+            error_msg = f"Password expired for user. Please change password in CDSC MeroShare."
+            print(f"❌ {error_msg}")
+            raise Exception(error_msg)
+        
+        # Check for account expiration
+        if response_data.get("accountExpired", False):
+            error_msg = f"Account expired for user. Please renew account in CDSC MeroShare."
+            print(f"❌ {error_msg}")
+            raise Exception(error_msg)
+        
+        # Check for demat expiration
+        if response_data.get("dematExpired", False):
+            error_msg = f"Demat account expired for user. Please renew demat account in CDSC MeroShare."
+            print(f"❌ {error_msg}")
+            raise Exception(error_msg)
+        
         # Extract JWT token from response headers
         auth_header = response.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
