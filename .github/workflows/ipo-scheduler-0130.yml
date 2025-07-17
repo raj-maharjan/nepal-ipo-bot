@@ -57,7 +57,8 @@ jobs:
             exit(1)
         
         # Get user name from workflow dispatch or use secret
-        user_name = '${{ github.event.inputs.user_name }}' if '${{ github.event.inputs.user_name }}' else user_name
+        input_user_name = '${{ github.event.inputs.user_name }}'
+        user_name = input_user_name if input_user_name and input_user_name.strip() else user_name
         
         print(f'🚀 Starting IPO application for user: {user_name}')
         print(f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}')
