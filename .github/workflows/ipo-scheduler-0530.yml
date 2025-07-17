@@ -77,44 +77,68 @@ jobs:
             
             if response.status_code == 200:
                 result = response.json()
-                print('✅ IPO application completed successfully')
                 
-                # Send Telegram notification
-                if telegram_token and telegram_chat_id:
-                    # Use CDSC name from API response if available, otherwise fallback to user_name
-                    cdsc_name = result.get('cdsc_name', user_name)
-                    notification = f'🤖 GitHub Action: IPO Application Complete\n\n'
-                    notification += f'👤 User: {cdsc_name}\n'
-                    notification += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n\n'
-                    notification += f'📊 Results:\n'
-                    notification += f'• Successfully Applied: {result.get(\"total_applied\", 0)}\n'
-                    notification += f'• Failed Applications: {result.get(\"total_failed\", 0)}\n'
+                # Check if the response indicates an error
+                if result.get('status') == 'error':
+                    print(f'❌ IPO application failed: {result.get(\"message\", \"Unknown error\")}')
+                    error_msg = f'❌ GitHub Action: IPO Application Failed\n\n'
+                    error_msg += f'👤 User: {user_name}\n'
+                    error_msg += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n'
+                    error_msg += f'📄 Error: {result.get(\"message\", \"Unknown error\")}'
                     
-                    if result.get('applied_issues'):
-                        notification += '\n✅ Applied Issues:\n'
-                        for issue in result['applied_issues']:
-                            notification += f'• {issue[\"scrip\"]} - {issue[\"company\"]}\n'
-                    
-                    if result.get('failed_issues'):
-                        notification += '\n❌ Failed Issues:\n'
-                        for issue in result['failed_issues']:
-                            notification += f'• {issue[\"scrip\"]} - {issue[\"company\"]} ({issue[\"reason\"]})\n'
-                    
-                    telegram_response = requests.post(
-                        f'https://api.telegram.org/bot{telegram_token}/sendMessage',
-                        json={
-                            'chat_id': telegram_chat_id,
-                            'text': notification,
-                            'parse_mode': 'HTML'
-                        }
-                    )
-                    
-                    if telegram_response.status_code == 200:
-                        print('✅ Telegram notification sent')
-                    else:
-                        print(f'❌ Failed to send Telegram notification: {telegram_response.status_code}')
+                    if telegram_token and telegram_chat_id:
+                        telegram_response = requests.post(
+                            f'https://api.telegram.org/bot{telegram_token}/sendMessage',
+                            json={
+                                'chat_id': telegram_chat_id,
+                                'text': error_msg,
+                                'parse_mode': 'HTML'
+                            }
+                        )
+                        
+                        if telegram_response.status_code == 200:
+                            print('✅ Telegram error notification sent')
+                        else:
+                            print(f'❌ Failed to send Telegram error notification: {telegram_response.status_code}')
                 else:
-                    print('⚠️ Telegram credentials not configured')
+                    print('✅ IPO application completed successfully')
+                    
+                    # Send Telegram notification for success
+                    if telegram_token and telegram_chat_id:
+                        # Use CDSC name from API response if available, otherwise fallback to user_name
+                        cdsc_name = result.get('cdsc_name', user_name)
+                        notification = f'🤖 GitHub Action: IPO Application Complete\n\n'
+                        notification += f'👤 User: {cdsc_name}\n'
+                        notification += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n\n'
+                        notification += f'📊 Results:\n'
+                        notification += f'• Successfully Applied: {result.get(\"total_applied\", 0)}\n'
+                        notification += f'• Failed Applications: {result.get(\"total_failed\", 0)}\n'
+                        
+                        if result.get('applied_issues'):
+                            notification += '\n✅ Applied Issues:\n'
+                            for issue in result['applied_issues']:
+                                notification += f'• {issue[\"scrip\"]} - {issue[\"company\"]}\n'
+                        
+                        if result.get('failed_issues'):
+                            notification += '\n❌ Failed Issues:\n'
+                            for issue in result['failed_issues']:
+                                notification += f'• {issue[\"scrip\"]} - {issue[\"company\"]} ({issue[\"reason\"]})\n'
+                        
+                        telegram_response = requests.post(
+                            f'https://api.telegram.org/bot{telegram_token}/sendMessage',
+                            json={
+                                'chat_id': telegram_chat_id,
+                                'text': notification,
+                                'parse_mode': 'HTML'
+                            }
+                        )
+                        
+                        if telegram_response.status_code == 200:
+                            print('✅ Telegram notification sent')
+                        else:
+                            print(f'❌ Failed to send Telegram notification: {telegram_response.status_code}')
+                    else:
+                        print('⚠️ Telegram credentials not configured')
                     
             else:
                 print(f'❌ IPO application failed with status: {response.status_code}')
