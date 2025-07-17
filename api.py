@@ -133,6 +133,12 @@ def get_applicable_issues():
                 print(f"Skipping issue - shareTypeName: {share_type_name} (expected: IPO, FPO, or RESERVED)")
                 continue
                 
+            # Filter out issues that are already in process
+            action = issue.get("action", "")
+            if action == "inProcess":
+                print(f"Skipping issue - action: {action} (already in process): {issue.get('scrip')} - {issue.get('companyName')}")
+                continue
+                
             filtered_issues.append(issue)
             print(f"Added filtered issue: {issue.get('scrip')} - {issue.get('companyName')} - {share_type_name}")
         

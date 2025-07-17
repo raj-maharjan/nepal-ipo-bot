@@ -130,16 +130,6 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
                 try:
                     print(f"Processing issue: {issue.get('scrip')} - {issue.get('companyName')}")
                     
-                    # Check if IPO is already in process
-                    if issue.get("action") == "inProcess":
-                        print(f"⚠️ Already filled IPO for {issue.get('companyName')} ({issue.get('scrip')})")
-                        failed_issues.append({
-                            "company": issue.get('companyName'),
-                            "scrip": issue.get('scrip'),
-                            "reason": "Already in process"
-                        })
-                        continue
-                    
                     # Apply for IPO
                     ipo_result = apply_ipo(token, {
                         "companyShareId": issue["companyShareId"]
@@ -254,16 +244,6 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
             for issue in applicable_issues:
                 try:
                     print(f"Processing issue: {issue.get('scrip')} - {issue.get('companyName')}")
-                    
-                    # Check if IPO is already in process
-                    if issue.get("action") == "inProcess":
-                        print(f"⚠️ Already filled IPO for {issue.get('companyName')} ({issue.get('scrip')})")
-                        failed_issues.append({
-                            "company": issue.get('companyName'),
-                            "scrip": issue.get('scrip'),
-                            "reason": "Already in process"
-                        })
-                        continue
                     
                     # Apply for IPO
                     ipo_result = apply_ipo(token, {
