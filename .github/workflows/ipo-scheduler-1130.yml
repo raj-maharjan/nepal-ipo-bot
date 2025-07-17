@@ -80,8 +80,10 @@ jobs:
                 
                 # Send Telegram notification
                 if telegram_token and telegram_chat_id:
+                    # Use CDSC name from API response if available, otherwise fallback to user_name
+                    cdsc_name = result.get('cdsc_name', user_name)
                     notification = f'🤖 GitHub Action: IPO Application Complete\n\n'
-                    notification += f'👤 User: {user_name}\n'
+                    notification += f'👤 User: {cdsc_name}\n'
                     notification += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n\n'
                     notification += f'📊 Results:\n'
                     notification += f'• Successfully Applied: {result.get(\"total_applied\", 0)}\n'

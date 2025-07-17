@@ -112,6 +112,12 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
     try:
         # Login to CDSC
         token = login(user_row["clientId"], user_row["username"], user_row["password"])
+        
+        # Get user details from CDSC API to get the actual name
+        from api import get_user_details
+        user_details = get_user_details()
+        cdsc_name = user_details.get("name", user_name)  # Fallback to user_name if name not found
+        
         applicable_issues = get_applicable_issues()
         print(f"Found {len(applicable_issues) if isinstance(applicable_issues, list) else 'unknown'} applicable issues")
         
@@ -154,22 +160,10 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
                         "reason": str(e)
                     })
             
-            # Send completion notification
-            completion_message = f"✅ IPO Application Complete for {user_name}\n\n"
-            completion_message += f"📊 Results:\n"
-            completion_message += f"• Successfully Applied: {len(applied_issues)}\n"
-            completion_message += f"• Failed Applications: {len(failed_issues)}\n\n"
-            if applied_issues:
-                completion_message += "✅ Applied Issues:\n"
-                for issue in applied_issues:
-                    completion_message += f"• {issue['scrip']} - {issue['company']}\n"
-            if failed_issues:
-                completion_message += "\n❌ Failed Issues:\n"
-                for issue in failed_issues:
-                    completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
-            send_telegram(completion_message)
+            # Note: Telegram notifications are handled by GitHub Actions to avoid duplicates
             return {
                 "status": "success",
+                "cdsc_name": cdsc_name,
                 "message": f"Processed {len(applied_issues)} successful applications and {len(failed_issues)} failures",
                 "applied_issues": applied_issues,
                 "failed_issues": failed_issues,
@@ -178,8 +172,8 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
             }
         else:
             # No applicable issues found
-            print(f"ℹ️ No applicable issues found for {user_name}")
-            send_telegram(f"ℹ️ No applicable IPO issue found for {user_name}.")
+            print(f"ℹ️ No applicable issues found for {cdsc_name}")
+            send_telegram(f"ℹ️ No applicable IPO issue found for {cdsc_name}.")
             return {
                 "status": "success",
                 "message": "No applicable issues found",
@@ -243,6 +237,12 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
     try:
         # Login to CDSC
         token = login(user_row["clientId"], user_row["username"], user_row["password"])
+        
+        # Get user details from CDSC API to get the actual name
+        from api import get_user_details
+        user_details = get_user_details()
+        cdsc_name = user_details.get("name", user_name)  # Fallback to user_name if name not found
+        
         applicable_issues = get_applicable_issues()
         print(f"Found {len(applicable_issues) if isinstance(applicable_issues, list) else 'unknown'} applicable issues")
         
@@ -286,7 +286,7 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
                     })
             
             # Send completion notification
-            completion_message = f"✅ IPO Application Complete for {user_name}\n\n"
+            completion_message = f"✅ IPO Application Complete for {cdsc_name}\n\n"
             completion_message += f"📊 Results:\n"
             completion_message += f"• Successfully Applied: {len(applied_issues)}\n"
             completion_message += f"• Failed Applications: {len(failed_issues)}\n\n"
@@ -301,6 +301,7 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
             send_telegram(completion_message)
             return {
                 "status": "success",
+                "cdsc_name": cdsc_name,
                 "message": f"Processed {len(applied_issues)} successful applications and {len(failed_issues)} failures",
                 "applied_issues": applied_issues,
                 "failed_issues": failed_issues,
@@ -309,8 +310,8 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
             }
         else:
             # No applicable issues found
-            print(f"ℹ️ No applicable issues found for {user_name}")
-            send_telegram(f"ℹ️ No applicable IPO issue found for {user_name}.")
+            print(f"ℹ️ No applicable issues found for {cdsc_name}")
+            send_telegram(f"ℹ️ No applicable IPO issue found for {cdsc_name}.")
             return {
                 "status": "success",
                 "message": "No applicable issues found",
