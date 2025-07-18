@@ -1,147 +1,152 @@
-# Nepal IPO Bot
+# IPO Bot
 
-A FastAPI-based bot that automates IPO applications for users via WhatsApp using Twilio. It integrates with the CDSC MeroShare API and Google Sheets for user data management, and supports fuzzy keyword search for company names.
+A FastAPI-based bot that automates IPO applications for users via Telegram. It integrates with the CDSC MeroShare API and Google Sheets for user data management, and supports fuzzy keyword search for company names.
 
 ## Features
-- **WhatsApp Integration:** Users can apply for IPOs by sending WhatsApp messages.
-- **Telegram Notifications:** Receive detailed notifications about IPO application results via Telegram.
-- **Fuzzy Search:** Finds applicable IPO issues using fuzzy matching on company names.
-- **Google Sheets Integration:** Reads user credentials and info from a Google Sheet.
-- **CDSC API Automation:** Logs in and applies for IPOs automatically.
-- **Flexible Message Parsing:** Supports various WhatsApp message formats, including kitta (share quantity) extraction.
-- **Detailed Logging & Error Handling:** Provides clear feedback and logs for debugging.
 
-## Requirements
+- **Telegram Bot Integration:** Users can apply for IPOs by sending Telegram messages to the bot.
+- **CDSC MeroShare API Integration:** Automated login and IPO application.
+- **Google Sheets Integration:** User data management and storage.
+- **Fuzzy Keyword Search:** Intelligent company name matching.
+- **Flexible Message Parsing:** Supports various Telegram message formats, including kitta (share quantity) extraction.
+- **Error Handling:** Comprehensive error handling and user feedback.
+- **Multi-User Support:** Handles multiple users with different credentials.
+
+## Prerequisites
+
 - Python 3.8+
-- Twilio account (for WhatsApp API)
-- Google Cloud service account (for Sheets API)
-- CDSC MeroShare account credentials (stored in Google Sheet)
+- Telegram Bot Token
+- Google Sheets API credentials
+- CDSC MeroShare account credentials
+- Google Sheets account
 
-## Setup Instructions
+## Installation
 
-### 1. Clone the Repository
+1. Clone the repository:
 ```bash
-git clone https://github.com/raj-maharjan/nepal-ipo-bot.git
-cd nepal-ipo-bot
+git clone <repository-url>
+cd ipo-bot
 ```
 
-### 2. Create and Activate a Virtual Environment
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Install Dependencies
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Google Sheets Setup
-- Create a Google Cloud project and enable the Google Sheets API.
-- Create a service account and download the `service_account.json` key file.
-- Share your Google Sheet (e.g., "meroshare credentials") with the service account email.
-- Place `service_account.json` in the project root (already in .gitignore).
-
-### 5. Environment Variables
-Create a `.env` file in the project root with the following:
-```
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-TELEGRAM_CHAT_ID=your_telegram_chat_id
-```
-
-### 6. Telegram Setup (Optional)
-1. Create a Telegram bot:
-   - Message [@BotFather](https://t.me/botfather) on Telegram
-   - Send `/newbot` command
-   - Follow the instructions to create your bot
-   - Save the bot token provided by BotFather
-2. Get your Chat ID:
-   - Message your bot or add it to a group
-   - Send a message to the bot
-   - Visit `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
-   - Find your chat_id in the response
-3. Add the credentials to your `.env` file:
-   ```
-   TELEGRAM_BOT_TOKEN=your_bot_token_here
-   TELEGRAM_CHAT_ID=your_chat_id_here
-   ```
-
-### 7. Twilio WhatsApp Setup
-1. Sign up or log in to [Twilio](https://www.twilio.com/).
-2. Go to the [Twilio Console](https://console.twilio.com/).
-3. Get your Account SID and Auth Token.
-4. Activate the WhatsApp Sandbox:
-   - Go to [Twilio WhatsApp Sandbox](https://www.twilio.com/console/sms/whatsapp/sandbox)
-   - Note the sandbox number (e.g., `whatsapp:+14155238886`).
-   - Join the sandbox by sending the join code to the number via WhatsApp.
-5. Set the sandbox number in your code (already set as `TWILIO_NUMBER` in `main.py`).
-6. Set your webhook URL in the Twilio Console to point to your server's `/webhook` endpoint (e.g., `https://your-domain.com/webhook`).
-
-### 8. Run the Bot
+3. Set up environment variables in a `.env` file:
 ```bash
-uvicorn main:app --reload
+# Google Sheets
+GOOGLE_SHEETS_CREDENTIALS_FILE=path/to/credentials.json
+SPREADSHEET_ID=your_spreadsheet_id
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+
+# CDSC API (optional, for direct testing)
+CDSC_USERNAME=your_cdsc_username
+CDSC_PASSWORD=your_cdsc_password
+CDSC_CLIENT_ID=your_cdsc_client_id
 ```
 
-### 9. GitHub Actions Setup (Optional)
-For automated IPO applications, set up GitHub Actions:
+4. Set up Google Sheets:
+   - Create a Google Sheet with user data
+   - Share it with the service account email
+   - Update the `SPREADSHEET_ID` in your `.env` file
 
-1. **Create GitHub Secrets:**
-   - Go to your GitHub repository → Settings → Secrets and variables → Actions
-   - Add the following secrets:
-     - `WEBHOOK_URL`: Your deployed app URL (e.g., `https://your-domain.com`)
-     - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token
-     - `TELEGRAM_CHAT_ID`: Your Telegram chat ID
-     - `GOOGLE_SHEETS_CREDENTIALS`: Your Google service account JSON (for multi-user workflow)
+5. Set up Telegram Bot:
+   - Create a bot via [@BotFather](https://t.me/botfather)
+   - Get the bot token and add it to your `.env` file
+   - Set up webhook to point to your server's `/webhook` endpoint
 
-2. **Choose Workflow:**
-   - **Single User**: Uses `ipo-scheduler.yml` (applies for one user)
-   - **Multi-User**: Uses `ipo-scheduler-multi-user.yml` (applies for all users in sheet)
-
-3. **Schedule:**
-   - Runs at 9:30 PM NPT every 2 hours
-   - Can be manually triggered via GitHub Actions tab
-   - Sends Telegram notifications with results
-
-4. **Manual Trigger:**
-   - Go to Actions tab in GitHub
-   - Select the workflow
-   - Click "Run workflow"
-   - Enter user name (optional for multi-user)
+6. Run the application:
+```bash
+python main.py
+```
 
 ## Usage
-- Send a WhatsApp message to your Twilio sandbox number in one of the following formats:
-  - `apply ipo for john in himstar`
-  - `apply ipo for kaka for company himstar 10 kitta`
-  - `ipo nene urja`
-- The bot will parse the message, find the user and company, and apply for the IPO if possible.
-- You will receive WhatsApp feedback for each step (login, issue found, application success/failure).
 
-## Message Format Examples
-- `apply ipo for john in himstar`
-- `apply ipo for kaka for company himstar 10 kitta`
-- `ipo nene urja`
-- `apply for sarah company def`
+### Telegram Bot Commands
 
-## Project Structure
-- `main.py` - FastAPI app, webhook, WhatsApp/Twilio integration
-- `api.py` - CDSC API logic (login, get issues, apply IPO)
-- `parser.py` - Message parsing and fuzzy matching
+Users can interact with the bot by sending messages in the following format:
+
+```
+[person] [company] [kitta]
+```
+
+Examples:
+- `john abc 10` - Apply for ABC company with 10 kitta for John
+- `jane xyz 5` - Apply for XYZ company with 5 kitta for Jane
+
+The bot will:
+1. Parse the message to extract person, company, and kitta
+2. Find the user in the Google Sheet
+3. Login to CDSC using the user's credentials
+4. Search for applicable IPO issues
+5. Apply for the IPO if found
+6. Send feedback via Telegram
+
+### API Endpoints
+
+- `POST /webhook` - Telegram bot webhook endpoint
+- `POST /apply` - Apply for all IPOs for a specific user (used by GitHub Actions)
+- `GET /apply/{user_name}` - Apply for all IPOs for a specific user (GET version)
+
+## File Structure
+
+- `main.py` - FastAPI app, webhook, Telegram bot integration
+- `api.py` - CDSC API integration functions
 - `sheets.py` - Google Sheets integration
+- `parser.py` - Message parsing and fuzzy search logic
 - `requirements.txt` - Python dependencies
-- `.env` - Environment variables (not committed)
-- `service_account.json` - Google service account key (not committed)
 
-## Security Notes
-- Never commit your `.env` or `service_account.json` files.
-- The bot expects user credentials and info in a Google Sheet named "meroshare credentials".
+## Telegram Bot Setup
 
-## References
-- [Twilio WhatsApp Sandbox Documentation](https://www.twilio.com/docs/whatsapp/sandbox)
-- [CDSC MeroShare](https://meroshare.cdsc.com.np/)
-- [Google Sheets API Python Quickstart](https://developers.google.com/sheets/api/quickstart/python)
+1. Create a bot via [@BotFather](https://t.me/botfather):
+   - Send `/newbot` to @BotFather
+   - Choose a name for your bot
+   - Choose a username (must end with 'bot')
+   - Copy the bot token
 
----
+2. Set up webhook:
+   - Deploy your application to a server with HTTPS
+   - Set the webhook URL: `https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=https://your-domain.com/webhook`
 
-For any issues, open an issue on the [GitHub repo](https://github.com/raj-maharjan/nepal-ipo-bot). 
+3. Test the bot:
+   - Send a message to your bot in the format: `[person] [company] [kitta]`
+   - The bot should respond with the application status
+
+## Environment Variables
+
+```bash
+# Google Sheets
+GOOGLE_SHEETS_CREDENTIALS_FILE=path/to/credentials.json
+SPREADSHEET_ID=your_spreadsheet_id
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+
+# CDSC API (optional)
+CDSC_USERNAME=your_cdsc_username
+CDSC_PASSWORD=your_cdsc_password
+CDSC_CLIENT_ID=your_cdsc_client_id
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Resources
+
+- [Telegram Bot API Documentation](https://core.telegram.org/bots/api)
+- [CDSC MeroShare API Documentation](https://meroshare.cdsc.com.np/)
+- [Google Sheets API Documentation](https://developers.google.com/sheets/api) 

@@ -41,6 +41,7 @@ jobs:
         import requests
         import os
         import json
+        import time
         from datetime import datetime
         
         webhook_url = os.getenv('WEBHOOK_URL')
@@ -64,13 +65,48 @@ jobs:
         print(f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}')
         
         try:
-            # Call the webhook
-            response = requests.post(
-                f'{webhook_url}/apply',
-                json={'user_name': user_name},
-                headers={'Content-Type': 'application/json'},
-                timeout=300  # 5 minutes timeout
-            )
+            # Call the webhook with retry mechanism
+            max_retries = 3
+            retry_delay = 5
+            
+            for attempt in range(max_retries):
+                try:
+                    print(f'🔄 Attempt {attempt + 1}/{max_retries}')
+                    
+                    response = requests.post(
+                        f'{webhook_url}/apply',
+                        json={'user_name': user_name},
+                        headers={'Content-Type': 'application/json'},
+                        timeout=(30, 300)  # (connect_timeout, read_timeout)
+                    )
+                    break  # Success, exit retry loop
+                    
+                except requests.exceptions.ConnectionError as e:
+                    print(f'❌ Connection error on attempt {attempt + 1}: {str(e)}')
+                    if attempt < max_retries - 1:
+                        print(f'⏳ Retrying in {retry_delay} seconds...')
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                    else:
+                        raise Exception(f'Connection failed after {max_retries} attempts: {str(e)}')
+                        
+                except requests.exceptions.Timeout as e:
+                    print(f'❌ Timeout error on attempt {attempt + 1}: {str(e)}')
+                    if attempt < max_retries - 1:
+                        print(f'⏳ Retrying in {retry_delay} seconds...')
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                    else:
+                        raise Exception(f'Request timeout after {max_retries} attempts: {str(e)}')
+                        
+                except Exception as e:
+                    print(f'❌ Unexpected error on attempt {attempt + 1}: {str(e)}')
+                    if attempt < max_retries - 1:
+                        print(f'⏳ Retrying in {retry_delay} seconds...')
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                    else:
+                        raise
             
             print(f'📡 Response Status: {response.status_code}')
             print(f'📡 Response: {response.text}')

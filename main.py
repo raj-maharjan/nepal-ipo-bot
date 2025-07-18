@@ -13,31 +13,53 @@ load_dotenv()
 
 app = FastAPI()
 
-TWILIO_NUMBER = os.getenv('WHATSAPP_NUMBER')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 class ApplyRequest(BaseModel):
     user_name: str
 
-@app.post("/webhook")
-async def twilio_webhook(request: Request):
-    form = await request.form()
-    msg = form.get("Body", "")
-    sender = form.get("From")
+class TelegramUpdate(BaseModel):
+    update_id: int
+    message: Dict[str, Any] = None
+    callback_query: Dict[str, Any] = None
 
+@app.post("/webhook")
+async def telegram_webhook(update: TelegramUpdate):
+    """
+    Handle Telegram bot webhook updates
+    """
+    if update.message:
+        chat_id = update.message.get("chat", {}).get("id")
+        text = update.message.get("text", "")
+        user_id = update.message.get("from", {}).get("id")
+        username = update.message.get("from", {}).get("username", "")
+        
+        print(f"📱 Received Telegram message from {username} ({user_id}): {text}")
+        
+        # Process the message
+        result = process_telegram_message(chat_id, text, username)
+        
+        return {"status": "success"}
+    
+    return {"status": "ignored"}
+
+def process_telegram_message(chat_id: int, text: str, username: str) -> Dict[str, Any]:
+    """
+    Process Telegram message and send response
+    """
     sheet_data = get_sheet_data()
     known_people = [row["name"].lower() for row in sheet_data]
 
-    result = extract_person_company_and_kitta(msg, known_people)
+    result = extract_person_company_and_kitta(text, known_people)
     person = result["person"]
     company = result["company"]
     message_kitta = result["kitta"]
     
     if not person or not company:
-        result = send_whatsapp(sender, "❌ Couldn't detect person or company.")
-        print(f"📱 WhatsApp send result: {result}")
-        return Response(content="OK", media_type="text/plain")
+        response_message = "❌ Couldn't detect person or company.\n\nPlease send a message in this format:\n`[person] [company] [kitta]`\n\nExample:\n`john abc 10`"
+        send_telegram_message(chat_id, response_message)
+        return {"status": "error", "message": "Couldn't detect person or company"}
     
     print("person", person)
     print("company", company)
@@ -45,9 +67,10 @@ async def twilio_webhook(request: Request):
     
     user_row = next((row for row in sheet_data if row["name"].lower() == person), None)
     if not user_row:
-        result = send_whatsapp(sender, f"❌ No info found for {person}.")
-        print(f"📱 WhatsApp send result: {result}")
-        return Response(content="OK", media_type="text/plain")
+        response_message = f"❌ No info found for {person}."
+        send_telegram_message(chat_id, response_message)
+        return {"status": "error", "message": f"No info found for {person}"}
+    
     print("user_row", user_row)
     
     try:
@@ -58,18 +81,17 @@ async def twilio_webhook(request: Request):
         # Find the applicable issue using fuzzy search
         selected_issue = find_applicable_issue_by_company(applicable_issues, company)
         if not selected_issue:
-            result = send_whatsapp(sender, f"❌ No applicable issue found for {company.upper()}")
-            print(f"📱 WhatsApp send result: {result}")
-            return Response(content="OK", media_type="text/plain")
+            response_message = f"❌ No applicable issue found for {company.upper()}"
+            send_telegram_message(chat_id, response_message)
+            return {"status": "error", "message": f"No applicable issue found for {company.upper()}"}
         
         print("selected_issue", selected_issue)
         
         # Check if IPO is already in process
         if selected_issue.get("action") == "inProcess":
             already_filled_message = f"⚠️ Already filled IPO for {selected_issue.get('companyName')} ({selected_issue.get('scrip')}) for {person}"
-            result = send_whatsapp(sender, already_filled_message)
-            print(f"📱 WhatsApp send result: {result}")
-            return Response(content="OK", media_type="text/plain")
+            send_telegram_message(chat_id, already_filled_message)
+            return {"status": "warning", "message": "Already filled"}
         
         # Apply for IPO
         ipo_result = apply_ipo(token, {
@@ -78,13 +100,49 @@ async def twilio_webhook(request: Request):
         
         # Send success message
         success_message = f"✅ IPO applied successfully for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')})"
-        result = send_whatsapp(sender, success_message)
-        print(f"📱 WhatsApp send result: {result}")
-        return Response(content="OK", media_type="text/plain")
+        send_telegram_message(chat_id, success_message)
+        return {"status": "success", "message": success_message}
+        
     except Exception as e:
-        result = send_whatsapp(sender, f"❌ Error: {str(e)}")
-        print(f"📱 WhatsApp send result: {result}")
-        return Response(content="OK", media_type="text/plain")
+        error_message = f"❌ Error: {str(e)}"
+        send_telegram_message(chat_id, error_message)
+        return {"status": "error", "message": str(e)}
+
+def send_telegram_message(chat_id: int, message: str) -> Dict[str, Any]:
+    """
+    Send message to specific Telegram chat
+    """
+    try:
+        if not TELEGRAM_BOT_TOKEN:
+            print("❌ Missing Telegram bot token in environment variables")
+            return {"status": "error", "message": "Missing Telegram credentials"}
+        
+        print(f"📤 Sending Telegram message to {chat_id}: {message}")
+        
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "Markdown"
+        }
+        
+        # Use session with retry strategy for Telegram API calls
+        from api import session
+        response = session.post(url, json=payload, timeout=(10, 30))
+        
+        print(f"📡 Telegram API Response Status: {response.status_code}")
+        print(f"📡 Telegram API Response: {response.text}")
+        
+        if response.status_code == 200:
+            print("✅ Telegram message sent successfully")
+            return {"status": "success", "message": message}
+        else:
+            print(f"❌ Failed to send Telegram message. Status: {response.status_code}")
+            return {"status": "error", "message": f"API Error: {response.status_code}"}
+            
+    except Exception as e:
+        print(f"❌ Exception in send_telegram_message: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
 @app.post("/apply")
 async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
@@ -110,8 +168,25 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
     print(f"User row: {user_row}")
     
     try:
-        # Login to CDSC
-        token = login(user_row["clientId"], user_row["username"], user_row["password"])
+        # Add connection timeout handling
+        import time
+        max_retries = 3
+        retry_delay = 5
+        
+        for attempt in range(max_retries):
+            try:
+                # Login to CDSC
+                token = login(user_row["clientId"], user_row["username"], user_row["password"])
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                print(f"❌ Login attempt {attempt + 1} failed: {str(e)}")
+                if attempt < max_retries - 1:
+                    print(f"⏳ Retrying login in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    raise Exception(f"Login failed after {max_retries} attempts: {str(e)}")
         
         # Get user details from CDSC API to get the actual name
         from api import get_user_details
@@ -163,7 +238,7 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
         else:
             # No applicable issues found
             print(f"ℹ️ No applicable issues found for {cdsc_name}")
-            send_telegram(f"ℹ️ No applicable IPO issue found for {cdsc_name}.")
+            send_telegram_message(TELEGRAM_CHAT_ID, f"ℹ️ No applicable IPO issue found for {cdsc_name}.")
             return {
                 "status": "success",
                 "message": "No applicable issues found",
@@ -176,7 +251,7 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
     except Exception as e:
         print(f"❌ Error in apply_all_issues: {str(e)}")
         error_message = f"❌ Error in apply_all_issues for {user_name}: {str(e)}"
-        send_telegram(error_message)
+        send_telegram_message(TELEGRAM_CHAT_ID, error_message)
         return {
             "status": "error",
             "message": f"Error: {str(e)}",
@@ -200,7 +275,7 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
         for issue in failed_issues:
             completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
     
-    send_telegram(completion_message)
+    send_telegram_message(TELEGRAM_CHAT_ID, completion_message)
 
 @app.get("/apply/{user_name}")
 async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
@@ -225,8 +300,25 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
     print(f"User row: {user_row}")
     
     try:
-        # Login to CDSC
-        token = login(user_row["clientId"], user_row["username"], user_row["password"])
+        # Add connection timeout handling
+        import time
+        max_retries = 3
+        retry_delay = 5
+        
+        for attempt in range(max_retries):
+            try:
+                # Login to CDSC
+                token = login(user_row["clientId"], user_row["username"], user_row["password"])
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                print(f"❌ Login attempt {attempt + 1} failed: {str(e)}")
+                if attempt < max_retries - 1:
+                    print(f"⏳ Retrying login in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    raise Exception(f"Login failed after {max_retries} attempts: {str(e)}")
         
         # Get user details from CDSC API to get the actual name
         from api import get_user_details
@@ -278,7 +370,7 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
                 completion_message += "\n❌ Failed Issues:\n"
                 for issue in failed_issues:
                     completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
-            send_telegram(completion_message)
+            send_telegram_message(TELEGRAM_CHAT_ID, completion_message)
             return {
                 "status": "success",
                 "cdsc_name": cdsc_name,
@@ -291,7 +383,7 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
         else:
             # No applicable issues found
             print(f"ℹ️ No applicable issues found for {cdsc_name}")
-            send_telegram(f"ℹ️ No applicable IPO issue found for {cdsc_name}.")
+            send_telegram_message(TELEGRAM_CHAT_ID, f"ℹ️ No applicable IPO issue found for {cdsc_name}.")
             return {
                 "status": "success",
                 "message": "No applicable issues found",
@@ -304,7 +396,7 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
     except Exception as e:
         print(f"❌ Error in apply_all_issues: {str(e)}")
         error_message = f"❌ Error in apply_all_issues for {user_name}: {str(e)}"
-        send_telegram(error_message)
+        send_telegram_message(TELEGRAM_CHAT_ID, error_message)
         return {
             "status": "error",
             "message": f"Error: {str(e)}",
@@ -328,73 +420,4 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
         for issue in failed_issues:
             completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
     
-    send_telegram(completion_message)
-
-def send_telegram(message: str) -> Dict[str, Any]:
-    """
-    Send message via Telegram bot
-    """
-    try:
-        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-            print("❌ Missing Telegram credentials in environment variables")
-            return {"status": "error", "message": "Missing Telegram credentials"}
-        
-        print(f"📤 Sending Telegram message: {message}")
-        
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": message,
-            "parse_mode": "HTML"
-        }
-        
-        response = requests.post(url, json=payload)
-        
-        print(f"📡 Telegram API Response Status: {response.status_code}")
-        print(f"📡 Telegram API Response: {response.text}")
-        
-        if response.status_code == 200:
-            print("✅ Telegram message sent successfully")
-            return {"status": "success", "message": message}
-        else:
-            print(f"❌ Failed to send Telegram message. Status: {response.status_code}")
-            return {"status": "error", "message": f"API Error: {response.status_code}"}
-            
-    except Exception as e:
-        print(f"❌ Exception in send_telegram: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-def send_whatsapp(to, message):
-    try:
-        account_sid = os.getenv('TWILIO_ACCOUNT_SID')
-        auth_token = os.getenv('TWILIO_AUTH_TOKEN')
-        
-        if not account_sid or not auth_token:
-            print("❌ Missing Twilio credentials in environment variables")
-            return {"status": "error", "message": "Missing credentials"}
-        
-        print(f"📤 Sending WhatsApp message to {to}: {message}")
-        
-        response = requests.post(
-            f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
-            auth=(account_sid, auth_token),
-            data={
-                "From": TWILIO_NUMBER,
-                "To": to,
-                "Body": message
-            }
-        )
-        
-        print(f"📡 Twilio API Response Status: {response.status_code}")
-        print(f"📡 Twilio API Response: {response.text}")
-        
-        if response.status_code == 201:
-            print("✅ WhatsApp message sent successfully")
-            return {"status": "success", "message": message}
-        else:
-            print(f"❌ Failed to send WhatsApp message. Status: {response.status_code}")
-            return {"status": "error", "message": f"API Error: {response.status_code}"}
-            
-    except Exception as e:
-        print(f"❌ Exception in send_whatsapp: {str(e)}")
-        return {"status": "error", "message": str(e)}
+    send_telegram_message(TELEGRAM_CHAT_ID, completion_message)

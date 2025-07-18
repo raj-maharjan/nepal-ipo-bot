@@ -101,7 +101,7 @@ The system applies for IPO using the following endpoint and payload:
 **Data Sources:**
 - Most fields come from the sheet row (user_row)
 - `boid` uses the `username` field from sheet
-- `appliedKitta` priority: WhatsApp message > sheet row > default "10"
+- `appliedKitta` priority: Telegram message > sheet row > default "10"
 - `companyShareId` comes from the selected issue
 
 **Message Format Support:**

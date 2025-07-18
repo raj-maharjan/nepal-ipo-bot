@@ -1,10 +1,63 @@
 import requests
 import os
 from typing import Optional, Dict, Any
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import time
 
 # Global variables to store authentication data
 cdsc_token = None
 cdsc_cookies = None
+
+# Create a session with retry strategy
+def create_session():
+    """
+    Create a requests session with retry strategy and proper timeout
+    """
+    session = requests.Session()
+    
+    # Configure retry strategy
+    retry_strategy = Retry(
+        total=3,  # number of retries
+        backoff_factor=1,  # wait 1, 2, 4 seconds between retries
+        status_forcelist=[429, 500, 502, 503, 504],  # HTTP status codes to retry on
+        allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"]
+    )
+    
+    # Mount the adapter with retry strategy
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
+    return session
+
+# Global session
+session = create_session()
+
+def make_request(method, url, **kwargs):
+    """
+    Make HTTP request with proper timeout and error handling
+    """
+    # Set default timeout if not provided
+    if 'timeout' not in kwargs:
+        kwargs['timeout'] = (10, 300)  # (connect_timeout, read_timeout)
+    
+    try:
+        response = session.request(method, url, **kwargs)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.ConnectionError as e:
+        print(f"❌ Connection error: {str(e)}")
+        raise Exception(f"Connection failed: {str(e)}")
+    except requests.exceptions.Timeout as e:
+        print(f"❌ Request timeout: {str(e)}")
+        raise Exception(f"Request timeout: {str(e)}")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Request failed: {str(e)}")
+        if hasattr(e, 'response'):
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response text: {e.response.text}")
+        raise Exception(f"Request failed: {str(e)}")
 
 def login(client_id, username, password):
     """
@@ -20,8 +73,7 @@ def login(client_id, username, password):
     }
     
     try:
-        response = requests.post(url, json=payload)
-        response.raise_for_status()
+        response = make_request('POST', url, json=payload)
         
         # Parse response to check for expiration issues
         response_data = response.json()
@@ -58,15 +110,8 @@ def login(client_id, username, password):
         
         return cdsc_token
         
-    except requests.exceptions.RequestException as e:
-        print(f"CDSC Authentication failed with RequestException: {str(e)}")
-        print(f"Exception type: {type(e)}")
-        if hasattr(e, 'response'):
-            print(f"Response status: {e.response.status_code}")
-            print(f"Response text: {e.response.text}")
-        raise Exception(f"Authentication failed: {str(e)}")
     except Exception as e:
-        print(f"CDSC Authentication failed with general exception: {str(e)}")
+        print(f"CDSC Authentication failed: {str(e)}")
         print(f"Exception type: {type(e)}")
         raise Exception(f"Authentication failed: {str(e)}")
 
@@ -99,9 +144,7 @@ def get_applicable_issues():
     payload = {"filterFieldParams":[{"key":"companyIssue.companyISIN.script","alias":"Scrip"},{"key":"companyIssue.companyISIN.company.name","alias":"Company Name"},{"key":"companyIssue.assignedToClient.name","value":"","alias":"Issue Manager"}],"page":1,"size":10,"searchRoleViewConstants":"VIEW_APPLICABLE_SHARE","filterDateParams":[{"key":"minIssueOpenDate","condition":"","alias":"","value":""},{"key":"maxIssueCloseDate","condition":"","alias":"","value":""}]}
     
     try:
-        response = requests.post(url, json=payload, headers=headers, cookies=cdsc_cookies)
-        
-        response.raise_for_status()
+        response = make_request('POST', url, json=payload, headers=headers, cookies=cdsc_cookies)
         response_data = response.json()
         
         # Extract the actual issues from the response
@@ -233,8 +276,7 @@ def get_user_details():
     headers = get_auth_headers()
     
     try:
-        response = requests.get(url, headers=headers, cookies=cdsc_cookies)
-        response.raise_for_status()
+        response = make_request('GET', url, headers=headers, cookies=cdsc_cookies)
         user_data = response.json()
         
         print(f"User details from CDSC API: {user_data}")
@@ -259,8 +301,7 @@ def get_bank_ids():
     headers = get_auth_headers()
     
     try:
-        response = requests.get(url, headers=headers, cookies=cdsc_cookies)
-        response.raise_for_status()
+        response = make_request('GET', url, headers=headers, cookies=cdsc_cookies)
         bank_data = response.json()
         
         print(f"Bank data from CDSC API: {bank_data}")
@@ -304,8 +345,7 @@ def get_account_details(bank_id):
     headers = get_auth_headers()
     
     try:
-        response = requests.get(url, headers=headers, cookies=cdsc_cookies)
-        response.raise_for_status()
+        response = make_request('GET', url, headers=headers, cookies=cdsc_cookies)
         account_data = response.json()
         
         print(f"Account data from CDSC API for bank {bank_id}: {account_data}")
@@ -419,8 +459,7 @@ def apply_ipo(token, data, user_row, message_kitta=None):
             
             print(f"Applying IPO with data: {application_data}")
             
-            response = requests.post(url, json=application_data, headers=headers, cookies=cdsc_cookies)
-            response.raise_for_status()
+            response = make_request('POST', url, json=application_data, headers=headers, cookies=cdsc_cookies)
             print(f"IPO Application successful with bank ID: {bank_id}")
             return response.json()
             
