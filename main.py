@@ -93,15 +93,30 @@ def process_telegram_message(chat_id: int, text: str, username: str) -> Dict[str
             send_telegram_message(chat_id, already_filled_message)
             return {"status": "warning", "message": "Already filled"}
         
-        # Apply for IPO
-        ipo_result = apply_ipo(token, {
-            "companyShareId": selected_issue["companyShareId"]
-        }, user_row, message_kitta)
-        
-        # Send success message
-        success_message = f"✅ IPO applied successfully for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')})"
-        send_telegram_message(chat_id, success_message)
-        return {"status": "success", "message": success_message}
+        # Apply for IPO with multiple bank ID handling
+        try:
+            ipo_result = apply_ipo(token, {
+                "companyShareId": selected_issue["companyShareId"]
+            }, user_row, message_kitta)
+            
+            # Send success message
+            success_message = f"✅ IPO applied successfully for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')})"
+            send_telegram_message(chat_id, success_message)
+            return {"status": "success", "message": success_message}
+            
+        except Exception as e:
+            # Check if the error indicates all bank IDs failed
+            error_message = str(e)
+            if "all bank IDs" in error_message.lower() or "no bank ids available" in error_message.lower():
+                # All bank IDs failed, send error message
+                error_message = f"❌ All bank accounts failed for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')}): {str(e)}"
+                send_telegram_message(chat_id, error_message)
+                return {"status": "error", "message": str(e)}
+            else:
+                # This shouldn't happen with the current implementation, but handle it gracefully
+                error_message = f"❌ Error applying IPO for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')}): {str(e)}"
+                send_telegram_message(chat_id, error_message)
+                return {"status": "error", "message": str(e)}
         
     except Exception as e:
         error_message = f"❌ Error: {str(e)}"

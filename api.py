@@ -435,8 +435,9 @@ def apply_ipo(token, data, user_row, message_kitta=None):
         print(f"Using kitta from sheet: {applied_kitta}")
     
     # Try each bank ID until one succeeds
-    for bank_id in bank_ids:
-        print(f"Trying with bank ID: {bank_id}")
+    print(f"Found {len(bank_ids)} bank IDs to try: {bank_ids}")
+    for i, bank_id in enumerate(bank_ids):
+        print(f"Trying with bank ID {i+1}/{len(bank_ids)}: {bank_id}")
         
         try:
             # Get account details for this specific bank
@@ -460,20 +461,22 @@ def apply_ipo(token, data, user_row, message_kitta=None):
             print(f"Applying IPO with data: {application_data}")
             
             response = make_request('POST', url, json=application_data, headers=headers, cookies=cdsc_cookies)
-            print(f"IPO Application successful with bank ID: {bank_id}")
+            print(f"✅ IPO Application successful with bank ID: {bank_id}")
             return response.json()
             
-        except requests.exceptions.RequestException as e:
-            print(f"IPO Application failed with bank ID {bank_id}: {str(e)}")
+        except Exception as e:
+            print(f"❌ IPO Application failed with bank ID {bank_id}: {str(e)}")
+            # Try to get response details if available
             if hasattr(e, 'response'):
                 print(f"Response status: {e.response.status_code}")
                 print(f"Response text: {e.response.text}")
             
             # If this is the last bank ID, raise the exception
             if bank_id == bank_ids[-1]:
-                raise Exception(f"IPO Application failed with all bank IDs: {str(e)}")
+                print(f"❌ All bank IDs failed. No more bank IDs to try.")
+                raise Exception(f"IPO Application failed with all bank IDs. Last error: {str(e)}")
             else:
-                print(f"Trying next bank ID...")
+                print(f"⏳ Trying next bank ID...")
                 continue
     
     # This should not be reached, but just in case
