@@ -105,21 +105,48 @@ def process_telegram_message(chat_id: int, text: str, username: str) -> Dict[str
             return {"status": "success", "message": success_message}
             
         except Exception as e:
+            error_str = str(e).lower()
+            
             # Check if the error indicates all bank IDs failed
-            error_message = str(e)
-            if "all bank IDs" in error_message.lower() or "no bank ids available" in error_message.lower():
-                # All bank IDs failed, send error message
-                error_message = f"❌ All bank accounts failed for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')}): {str(e)}"
+            if "all bank IDs" in error_str or "no bank ids available" in error_str:
+                # All bank IDs failed, send user-friendly error message
+                error_message = f"❌ All bank accounts failed for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')}). Please check your bank account details."
+                send_telegram_message(chat_id, error_message)
+                return {"status": "error", "message": str(e)}
+            elif "invalid crn" in error_str:
+                # CRN validation error
+                error_message = f"❌ Invalid CRN for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')}). Please check your CRN number."
+                send_telegram_message(chat_id, error_message)
+                return {"status": "error", "message": str(e)}
+            elif "connection failed" in error_str or "timeout" in error_str:
+                # Connection error
+                error_message = f"❌ Connection error for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')}). Please try again later."
                 send_telegram_message(chat_id, error_message)
                 return {"status": "error", "message": str(e)}
             else:
-                # This shouldn't happen with the current implementation, but handle it gracefully
+                # Generic error handling
                 error_message = f"❌ Error applying IPO for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')}): {str(e)}"
                 send_telegram_message(chat_id, error_message)
                 return {"status": "error", "message": str(e)}
         
     except Exception as e:
-        error_message = f"❌ Error: {str(e)}"
+        error_str = str(e).lower()
+        
+        # Handle authentication-related errors with user-friendly messages
+        if "authentication failed" in error_str or "login failed" in error_str:
+            error_message = f"❌ Authentication failed for {person}. Please check your CDSC credentials."
+        elif "password expired" in error_str:
+            error_message = f"❌ Password expired for {person}. Please change password in CDSC MeroShare."
+        elif "account expired" in error_str:
+            error_message = f"❌ Account expired for {person}. Please renew account in CDSC MeroShare."
+        elif "demat expired" in error_str:
+            error_message = f"❌ Demat account expired for {person}. Please renew demat account in CDSC MeroShare."
+        elif "connection failed" in error_str or "timeout" in error_str:
+            error_message = f"❌ Connection error for {person}. Please try again later."
+        else:
+            # For other errors, use a generic but user-friendly message
+            error_message = f"❌ Error processing request for {person}: {str(e)}"
+        
         send_telegram_message(chat_id, error_message)
         return {"status": "error", "message": str(e)}
 
