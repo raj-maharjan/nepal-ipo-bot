@@ -33,7 +33,7 @@ jobs:
     - name: Check IPO Status APIs
       id: check-status
       run: |
-        python check_ipo_status.py
+        python main.py check-ipo-status
     
     - name: Read Results File
       id: read-results
@@ -68,57 +68,7 @@ jobs:
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
+        ANY_OPEN: ${{ env.ANY_OPEN }}
       run: |
-        python -c "
-        import requests
-        import os
-        import json
-        from datetime import datetime
-        
-        telegram_token = os.getenv('TELEGRAM_BOT_TOKEN')
-        telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
-        apply_for_today = '${{ env.APPLY_FOR_TODAY }}'
-        any_open = '${{ env.ANY_OPEN }}'
-        results = '${{ steps.read-results.outputs.results }}'
-        
-        if not telegram_token or not telegram_chat_id:
-            print('❌ Telegram credentials not set')
-            exit(0)
-        
-        try:
-            # Parse results
-            results_data = json.loads(results) if results else []
-            
-            # Create message
-            message = f'📊 Daily IPO Status Check - {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\\n\\n'
-            
-            if apply_for_today == 'true':
-                message += '✅ Apply for Today: TRUE\\n'
-                message += '🎯 Open IPOs/FPOs/Right-Shares found!\\n\\n'
-            else:
-                message += 'ℹ️ Apply for Today: FALSE\\n'
-                message += '📋 No open IPOs/FPOs/Right-Shares found\\n\\n'
-            
-            message += '📋 API Status:\\n'
-            for result in results_data:
-                status_emoji = '✅' if 'Open' in result['status'] else '❌'
-                message += f'{status_emoji} {result[\"api\"]}: {result[\"status\"]}\\n'
-            
-            # Send to Telegram
-            url = f'https://api.telegram.org/bot{telegram_token}/sendMessage'
-            payload = {
-                'chat_id': telegram_chat_id,
-                'text': message,
-                'parse_mode': 'Markdown'
-            }
-            
-            response = requests.post(url, json=payload, timeout=10)
-            
-            if response.status_code == 200:
-                print('✅ Telegram notification sent successfully')
-            else:
-                print(f'❌ Failed to send Telegram notification: {response.status_code}')
-                
-        except Exception as e:
-            print(f'❌ Error sending Telegram notification: {str(e)}')
-        " 
+        python main.py send-notification 
