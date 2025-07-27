@@ -12,13 +12,12 @@ def update_repo_variables(apply_for_today, any_open):
     Update repository variables using GitHub API
     """
     # Get GitHub token and repository info
-    github_token = os.getenv('GITHUB_TOKEN')
+    github_token = os.getenv('PAT_TOKEN') or os.getenv('GITHUB_TOKEN')
     github_repository = os.getenv('GITHUB_REPOSITORY')
     
-    # For GitHub Actions, GITHUB_TOKEN is automatically available
     if not github_token:
-        print("❌ GITHUB_TOKEN not found")
-        print("💡 This script should be run in a GitHub Actions environment")
+        print("❌ No GitHub token found")
+        print("💡 Please set PAT_TOKEN secret in repository settings")
         return False
     
     if not github_token:

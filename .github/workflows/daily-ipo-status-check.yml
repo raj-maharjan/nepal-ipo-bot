@@ -62,6 +62,13 @@ jobs:
         echo "• APPLY_FOR_TODAY = $APPLY_FOR_TODAY"
         echo "• ANY_OPEN = $ANY_OPEN"
     
+    - name: Update Repository Variables
+      env:
+        PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      run: |
+        # Update repository variables using GitHub API with PAT
+        python utils/update_repo_variables.py "${{ env.APPLY_FOR_TODAY }}" "${{ env.ANY_OPEN }}"
+    
     - name: Display Results
       run: |
         echo "🎯 Final Results:"
