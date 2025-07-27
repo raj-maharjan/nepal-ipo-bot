@@ -15,6 +15,12 @@ def update_repo_variables(apply_for_today, any_open):
     github_token = os.getenv('GITHUB_TOKEN')
     github_repository = os.getenv('GITHUB_REPOSITORY')
     
+    # For GitHub Actions, GITHUB_TOKEN is automatically available
+    if not github_token:
+        print("❌ GITHUB_TOKEN not found")
+        print("💡 This script should be run in a GitHub Actions environment")
+        return False
+    
     if not github_token:
         print("❌ GITHUB_TOKEN not found")
         return False

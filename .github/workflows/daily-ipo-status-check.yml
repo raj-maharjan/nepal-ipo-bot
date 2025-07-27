@@ -85,12 +85,19 @@ jobs:
         APPLY_FOR_TODAY=$(python utils/ipo_status_checker.py check-ipo-status | grep "apply_for_today=" | cut -d'=' -f2)
         ANY_OPEN=$(python utils/ipo_status_checker.py check-ipo-status | grep "any_open=" | cut -d'=' -f2)
         
-        echo "🔄 Updating repository variables..."
+        echo "🔄 Current IPO Status:"
         echo "• APPLY_FOR_TODAY: $APPLY_FOR_TODAY"
         echo "• ANY_OPEN: $ANY_OPEN"
         
-        # Update repository variables using GitHub API
-        python utils/update_repo_variables.py "$APPLY_FOR_TODAY" "$ANY_OPEN"
+        # Set workflow environment variables
+        echo "APPLY_FOR_TODAY=$APPLY_FOR_TODAY" >> $GITHUB_ENV
+        echo "ANY_OPEN=$ANY_OPEN" >> $GITHUB_ENV
+        
+        echo "✅ Workflow variables updated"
+        echo "💡 Repository variables need to be updated manually in Settings → Secrets and variables → Actions → Variables"
+        echo "📋 Values to set:"
+        echo "  APPLY_FOR_TODAY = $APPLY_FOR_TODAY"
+        echo "  ANY_OPEN = $ANY_OPEN"
     
     - name: Send Telegram Notification
       if: always()
