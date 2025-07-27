@@ -137,11 +137,24 @@ jobs:
         # Set output variables for GitHub Actions
         print(f'\\n::set-output name=apply_for_today::{apply_for_today}')
         print(f'::set-output name=any_open::{str(any_open).lower()}')
-        print(f'::set-output name=results::{json.dumps(results)}')
+        
+        # Save results to a file to avoid JSON escaping issues
+        with open('results.json', 'w') as f:
+            json.dump(results, f)
         
         # Exit with success
         exit(0)
         "
+    
+    - name: Read Results File
+      id: read-results
+      run: |
+        if [ -f results.json ]; then
+          RESULTS=$(cat results.json)
+          echo "::set-output name=results::$RESULTS"
+        else
+          echo "::set-output name=results::[]"
+        fi
     
     - name: Set Environment Variable
       run: |
@@ -177,7 +190,7 @@ jobs:
         telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
         apply_for_today = '${{ env.APPLY_FOR_TODAY }}'
         any_open = '${{ env.ANY_OPEN }}'
-        results = '${{ steps.check-status.outputs.results }}'
+        results = '${{ steps.read-results.outputs.results }}'
         
         if not telegram_token or not telegram_chat_id:
             print('❌ Telegram credentials not set')
