@@ -33,7 +33,7 @@ jobs:
     - name: Check IPO Status APIs
       id: check-status
       run: |
-        python main.py check-ipo-status
+        python utils/ipo_status_checker.py check-ipo-status
     
     - name: Read Results File
       id: read-results
@@ -71,4 +71,4 @@ jobs:
         APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
         ANY_OPEN: ${{ env.ANY_OPEN }}
       run: |
-        python main.py send-notification 
+        python utils/ipo_status_checker.py send-notification 
