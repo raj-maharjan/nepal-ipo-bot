@@ -13,8 +13,26 @@ on:
         type: string
 
 jobs:
+  check-ipo-status:
+    runs-on: ubuntu-latest
+    outputs:
+      should_apply: ${{ steps.check-status.outputs.should_apply }}
+    steps:
+    - name: Check IPO Status
+      id: check-status
+      run: |
+        if [ "${{ vars.APPLY_FOR_TODAY }}" = "true" ]; then
+          echo "✅ APPLY_FOR_TODAY is true - proceeding with IPO application"
+          echo "should_apply=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ APPLY_FOR_TODAY is not true - skipping IPO application"
+          echo "should_apply=false" >> $GITHUB_OUTPUT
+        fi
+
   apply-ipos:
     runs-on: ubuntu-latest
+    needs: check-ipo-status
+    if: needs.check-ipo-status.outputs.should_apply == 'true'
     
     steps:
     - name: Checkout code
