@@ -12,6 +12,10 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   check-ipo-status:
     runs-on: ubuntu-latest
@@ -66,6 +70,27 @@ jobs:
         else
           echo "ℹ️ Setting apply_for_today to false - No open IPOs/FPOs/Right-Shares found"
         fi
+    
+    - name: Debug Repository Variables
+      run: |
+        echo "🔍 Debugging Repository Variables:"
+        echo "• Repository APPLY_FOR_TODAY: ${{ vars.APPLY_FOR_TODAY }}"
+        echo "• Repository ANY_OPEN: ${{ vars.ANY_OPEN }}"
+        echo "• Workflow APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}"
+        echo "• Workflow ANY_OPEN: ${{ env.ANY_OPEN }}"
+    
+    - name: Update Repository Variables
+      run: |
+        # Extract values from the check-status output
+        APPLY_FOR_TODAY=$(python utils/ipo_status_checker.py check-ipo-status | grep "apply_for_today=" | cut -d'=' -f2)
+        ANY_OPEN=$(python utils/ipo_status_checker.py check-ipo-status | grep "any_open=" | cut -d'=' -f2)
+        
+        echo "🔄 Updating repository variables..."
+        echo "• APPLY_FOR_TODAY: $APPLY_FOR_TODAY"
+        echo "• ANY_OPEN: $ANY_OPEN"
+        
+        # Update repository variables using GitHub API
+        python utils/update_repo_variables.py "$APPLY_FOR_TODAY" "$ANY_OPEN"
     
     - name: Send Telegram Notification
       if: always()
