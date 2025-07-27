@@ -398,7 +398,48 @@ def get_account_details(bank_id):
             print(f"Response text: {e.response.text}")
         raise Exception(f"Get account details failed for bank {bank_id}: {str(e)}")
 
-def apply_ipo(token, data, user_row, message_kitta=None):
+def get_reserved_quantity(demat, company_share_id):
+    """
+    Get reserved quantity for RESERVED share types from CDSC API
+    """
+    if not cdsc_token:
+        raise Exception("Not authenticated. Please login first.")
+    
+    url = f"https://webbackend.cdsc.com.np/api/shareCriteria/boid/{demat}/{company_share_id}"
+    
+    headers = get_auth_headers()
+    
+    try:
+        response = make_request('GET', url, headers=headers, cookies=cdsc_cookies)
+        response_data = response.json()
+        
+        print(f"Reserved quantity response: {response_data}")
+        
+        # Extract reservedQuantity and id from response
+        reserved_quantity = response_data.get("reservedQuantity")
+        share_criteria_id = response_data.get("id")
+        
+        if reserved_quantity is None:
+            raise Exception("No reservedQuantity found in response")
+        if share_criteria_id is None:
+            raise Exception("No id found in response")
+        
+        print(f"Extracted reserved quantity: {reserved_quantity}")
+        print(f"Extracted share criteria id: {share_criteria_id}")
+        
+        return {
+            "reserved_quantity": reserved_quantity,
+            "share_criteria_id": share_criteria_id
+        }
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Get reserved quantity failed: {str(e)}")
+        if hasattr(e, 'response'):
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response text: {e.response.text}")
+        raise Exception(f"Get reserved quantity failed: {str(e)}")
+
+def apply_ipo(token, data, user_row, message_kitta=None, share_type_name=None):
     """
     Apply for IPO using CDSC API
     """
@@ -434,6 +475,30 @@ def apply_ipo(token, data, user_row, message_kitta=None):
     else:
         print(f"Using kitta from sheet: {applied_kitta}")
     
+    # Handle RESERVED share types - get reserved quantity from API
+    share_criteria_id = None
+    if share_type_name == "RESERVED":
+        print(f"Share type is RESERVED, getting reserved quantity from API...")
+        try:
+            demat = user_details.get("demat", "")
+            company_share_id = data.get("companyShareId", "")
+            
+            if not demat:
+                raise Exception("Demat not found in user details")
+            if not company_share_id:
+                raise Exception("Company share ID not found in data")
+            
+            reserved_data = get_reserved_quantity(demat, company_share_id)
+            applied_kitta = str(reserved_data["reserved_quantity"])
+            share_criteria_id = str(reserved_data["share_criteria_id"])
+            print(f"Using reserved quantity from API: {applied_kitta}")
+            print(f"Using share criteria id from API: {share_criteria_id}")
+            
+        except Exception as e:
+            print(f"Failed to get reserved quantity: {str(e)}")
+            # Continue with original kitta if API call fails
+            print(f"Continuing with original kitta: {applied_kitta}")
+    
     # Try each bank ID until one succeeds
     print(f"Found {len(bank_ids)} bank IDs to try: {bank_ids}")
     for i, bank_id in enumerate(bank_ids):
@@ -457,6 +522,10 @@ def apply_ipo(token, data, user_row, message_kitta=None):
                 "companyShareId": f'{str(data["companyShareId"])}',  # Convert to string
                 "bankId": bank_id
             }
+            
+            # Add shareCriteriaId for RESERVED share types
+            if share_criteria_id:
+                application_data["shareCriteriaId"] = share_criteria_id
             
             print(f"Applying IPO with data: {application_data}")
             

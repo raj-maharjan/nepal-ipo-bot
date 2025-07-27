@@ -97,7 +97,7 @@ def process_telegram_message(chat_id: int, text: str, username: str) -> Dict[str
         try:
             ipo_result = apply_ipo(token, {
                 "companyShareId": selected_issue["companyShareId"]
-            }, user_row, message_kitta)
+            }, user_row, message_kitta, selected_issue.get("shareTypeName"))
             
             # Send success message
             success_message = f"✅ IPO applied successfully for {person} in {selected_issue.get('scrip')} ({selected_issue.get('companyName')})"
@@ -382,7 +382,7 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
                     # Apply for IPO
                     ipo_result = apply_ipo(token, {
                         "companyShareId": issue["companyShareId"]
-                    }, user_row)
+                    }, user_row, None, issue.get("shareTypeName"))
                     
                     print(f"✅ Successfully applied for {issue.get('scrip')} ({issue.get('companyName')})")
                     applied_issues.append({
