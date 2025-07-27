@@ -57,13 +57,17 @@ jobs:
         
         echo "APPLY_FOR_TODAY=$APPLY_FOR_TODAY" >> $GITHUB_ENV
         echo "ANY_OPEN=$ANY_OPEN" >> $GITHUB_ENV
+        
+        echo "✅ Environment variables set:"
+        echo "• APPLY_FOR_TODAY = $APPLY_FOR_TODAY"
+        echo "• ANY_OPEN = $ANY_OPEN"
     
     - name: Display Results
       run: |
         echo "🎯 Final Results:"
         echo "• Apply for Today: ${{ env.APPLY_FOR_TODAY }}"
         echo "• Any Open Status: ${{ env.ANY_OPEN }}"
-        echo "• Detailed Results: ${{ steps.check-status.outputs.results }}"
+        echo "• Detailed Results: ${{ steps.read-results.outputs.results }}"
         
         if [ "${{ env.APPLY_FOR_TODAY }}" = "true" ]; then
           echo "✅ Setting apply_for_today to true - IPOs/FPOs/Right-Shares are available!"
@@ -78,26 +82,31 @@ jobs:
         echo "• Repository ANY_OPEN: ${{ vars.ANY_OPEN }}"
         echo "• Workflow APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}"
         echo "• Workflow ANY_OPEN: ${{ env.ANY_OPEN }}"
+        
+        echo ""
+        echo "📋 Summary:"
+        echo "• Workflow variables (temporary): Set during this run"
+        echo "• Repository variables (permanent): Need manual update"
+        echo ""
+        echo "💡 To update repository variables manually:"
+        echo "1. Go to Settings → Secrets and variables → Actions → Variables"
+        echo "2. Update APPLY_FOR_TODAY to: ${{ env.APPLY_FOR_TODAY }}"
+        echo "3. Update ANY_OPEN to: ${{ env.ANY_OPEN }}"
     
-    - name: Update Repository Variables
+    - name: Show Current Status
       run: |
-        # Extract values from the check-status output
-        APPLY_FOR_TODAY=$(python utils/ipo_status_checker.py check-ipo-status | grep "apply_for_today=" | cut -d'=' -f2)
-        ANY_OPEN=$(python utils/ipo_status_checker.py check-ipo-status | grep "any_open=" | cut -d'=' -f2)
-        
         echo "🔄 Current IPO Status:"
-        echo "• APPLY_FOR_TODAY: $APPLY_FOR_TODAY"
-        echo "• ANY_OPEN: $ANY_OPEN"
+        echo "• APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}"
+        echo "• ANY_OPEN: ${{ env.ANY_OPEN }}"
         
-        # Set workflow environment variables
-        echo "APPLY_FOR_TODAY=$APPLY_FOR_TODAY" >> $GITHUB_ENV
-        echo "ANY_OPEN=$ANY_OPEN" >> $GITHUB_ENV
-        
-        echo "✅ Workflow variables updated"
-        echo "💡 Repository variables need to be updated manually in Settings → Secrets and variables → Actions → Variables"
-        echo "📋 Values to set:"
-        echo "  APPLY_FOR_TODAY = $APPLY_FOR_TODAY"
-        echo "  ANY_OPEN = $ANY_OPEN"
+        echo ""
+        echo "📋 Manual Update Required:"
+        echo "To update repository variables, go to:"
+        echo "Settings → Secrets and variables → Actions → Variables"
+        echo ""
+        echo "Set these values:"
+        echo "• APPLY_FOR_TODAY = ${{ env.APPLY_FOR_TODAY }}"
+        echo "• ANY_OPEN = ${{ env.ANY_OPEN }}"
     
     - name: Send Telegram Notification
       if: always()
