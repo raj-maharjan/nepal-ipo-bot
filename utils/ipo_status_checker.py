@@ -113,9 +113,9 @@ def check_ipo_status():
     with open('results.json', 'w') as f:
         json.dump(results, f)
     
-    # Set output variables for GitHub Actions
-    print(f'\n::set-output name=apply_for_today::{apply_for_today}')
-    print(f'::set-output name=any_open::{str(any_open).lower()}')
+    # Set output variables for GitHub Actions (using new syntax)
+    print(f'\napply_for_today={apply_for_today}')
+    print(f'any_open={str(any_open).lower()}')
     
     return apply_for_today, any_open, results
 

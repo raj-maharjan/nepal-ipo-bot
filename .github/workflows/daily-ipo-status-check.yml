@@ -40,15 +40,19 @@ jobs:
       run: |
         if [ -f results.json ]; then
           RESULTS=$(cat results.json)
-          echo "::set-output name=results::$RESULTS"
+          echo "results=$RESULTS" >> $GITHUB_OUTPUT
         else
-          echo "::set-output name=results::[]"
+          echo "results=[]" >> $GITHUB_OUTPUT
         fi
     
     - name: Set Environment Variable
       run: |
-        echo "APPLY_FOR_TODAY=${{ steps.check-status.outputs.apply_for_today }}" >> $GITHUB_ENV
-        echo "ANY_OPEN=${{ steps.check-status.outputs.any_open }}" >> $GITHUB_ENV
+        # Extract values from the check-status output
+        APPLY_FOR_TODAY=$(python utils/ipo_status_checker.py check-ipo-status | grep "apply_for_today=" | cut -d'=' -f2)
+        ANY_OPEN=$(python utils/ipo_status_checker.py check-ipo-status | grep "any_open=" | cut -d'=' -f2)
+        
+        echo "APPLY_FOR_TODAY=$APPLY_FOR_TODAY" >> $GITHUB_ENV
+        echo "ANY_OPEN=$ANY_OPEN" >> $GITHUB_ENV
     
     - name: Display Results
       run: |
