@@ -6,3 +6,4 @@ oauth2client
 requests
 python-multipart
 urllib3
+psycopg2-binary

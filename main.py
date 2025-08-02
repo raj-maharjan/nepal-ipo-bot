@@ -250,7 +250,7 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
                     # Apply for IPO
                     ipo_result = apply_ipo(token, {
                         "companyShareId": issue["companyShareId"]
-                    }, user_row)
+                    }, user_row, None, issue.get("shareTypeName"))
                     
                     print(f"✅ Successfully applied for {issue.get('scrip')} ({issue.get('companyName')})")
                     applied_issues.append({
@@ -445,21 +445,3 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
             "applied_issues": [],
             "failed_issues": []
         }
-    
-    # Send completion notification
-    completion_message = f"✅ IPO Application Complete for {user_name}\n\n"
-    completion_message += f"📊 Results:\n"
-    completion_message += f"• Successfully Applied: {len(applied_issues)}\n"
-    completion_message += f"• Failed Applications: {len(failed_issues)}\n\n"
-    
-    if applied_issues:
-        completion_message += "✅ Applied Issues:\n"
-        for issue in applied_issues:
-            completion_message += f"• {issue['scrip']} - {issue['company']}\n"
-    
-    if failed_issues:
-        completion_message += "\n❌ Failed Issues:\n"
-        for issue in failed_issues:
-            completion_message += f"• {issue['scrip']} - {issue['company']} ({issue['reason']})\n"
-    
-    send_telegram_message(TELEGRAM_CHAT_ID, completion_message)
