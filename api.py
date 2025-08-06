@@ -54,7 +54,7 @@ def make_request(method, url, **kwargs):
         raise Exception(f"Request timeout: {str(e)}")
     except requests.exceptions.RequestException as e:
         print(f"❌ Request failed: {str(e)}")
-        if hasattr(e, 'response'):
+        if hasattr(e, 'response') and e.response is not None:
             print(f"Response status: {e.response.status_code}")
             print(f"Response text: {e.response.text}")
         raise Exception(f"Request failed: {str(e)}")
@@ -113,6 +113,9 @@ def login(client_id, username, password):
     except Exception as e:
         print(f"CDSC Authentication failed: {str(e)}")
         print(f"Exception type: {type(e)}")
+        if "Expecting value: line 1 column 1 (char 0)" in str(e):
+            print("🔍 Detected JSON parsing error - API returned empty or invalid response")
+            print("🔄 This suggests the CDSC API is temporarily unavailable")
         raise Exception(f"Authentication failed: {str(e)}")
 
 def get_auth_headers():
@@ -146,7 +149,7 @@ def get_applicable_issues():
     try:
         response = make_request('POST', url, json=payload, headers=headers, cookies=cdsc_cookies)
         response_data = response.json()
-        
+        print(f"Response data: {response_data}")
         # Extract the actual issues from the response
         # The response has a structure like {"object": [...], "totalCount": 0}
         raw_issues = []
@@ -210,11 +213,11 @@ def get_applicable_issues():
         return filtered_issues
             
     except requests.exceptions.RequestException as e:
-        print(f"Get applicable issues failed: {str(e)}")
-        if hasattr(e, 'response'):
-            print(f"Response status: {e.response.status_code}")
-            print(f"Response text: {e.response.text}")
-        raise Exception(f"Get applicable issues failed: {str(e)}")
+        print(f"Get applicable issues failed 1: {str(e)}")
+        return []
+    except Exception as e:
+        print(f"Get applicable issues failed 3: {str(e)}")
+        return []
 
 def find_applicable_issue_by_company(applicable_issues: list, company_name: str) -> Optional[Dict[str, Any]]:
     """
@@ -284,9 +287,17 @@ def get_user_details():
         
     except requests.exceptions.RequestException as e:
         print(f"Get user details failed: {str(e)}")
-        if hasattr(e, 'response'):
+        if hasattr(e, 'response') and e.response is not None:
             print(f"Response status: {e.response.status_code}")
             print(f"Response text: {e.response.text}")
+        raise Exception(f"Get user details failed: {str(e)}")
+    except Exception as e:
+        print(f"Get user details failed: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        if "Expecting value: line 1 column 1 (char 0)" in str(e):
+            print("🔍 Detected JSON parsing error - API returned empty or invalid response")
+            print("🔄 Returning empty dict instead of raising exception")
+            return {}  # Return empty dict instead of raising exception
         raise Exception(f"Get user details failed: {str(e)}")
 
 def get_bank_ids():
@@ -328,9 +339,17 @@ def get_bank_ids():
         
     except requests.exceptions.RequestException as e:
         print(f"Get bank IDs failed: {str(e)}")
-        if hasattr(e, 'response'):
+        if hasattr(e, 'response') and e.response is not None:
             print(f"Response status: {e.response.status_code}")
             print(f"Response text: {e.response.text}")
+        raise Exception(f"Get bank IDs failed: {str(e)}")
+    except Exception as e:
+        print(f"Get bank IDs failed: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        if "Expecting value: line 1 column 1 (char 0)" in str(e):
+            print("🔍 Detected JSON parsing error - API returned empty or invalid response")
+            print("🔄 Returning empty list instead of raising exception")
+            return []  # Return empty list instead of raising exception
         raise Exception(f"Get bank IDs failed: {str(e)}")
 
 def get_account_details(bank_id):
@@ -393,9 +412,17 @@ def get_account_details(bank_id):
         
     except requests.exceptions.RequestException as e:
         print(f"Get account details failed for bank {bank_id}: {str(e)}")
-        if hasattr(e, 'response'):
+        if hasattr(e, 'response') and e.response is not None:
             print(f"Response status: {e.response.status_code}")
             print(f"Response text: {e.response.text}")
+        raise Exception(f"Get account details failed for bank {bank_id}: {str(e)}")
+    except Exception as e:
+        print(f"Get account details failed for bank {bank_id}: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        if "Expecting value: line 1 column 1 (char 0)" in str(e):
+            print("🔍 Detected JSON parsing error - API returned empty or invalid response")
+            print("🔄 Returning empty dict instead of raising exception")
+            return {}  # Return empty dict instead of raising exception
         raise Exception(f"Get account details failed for bank {bank_id}: {str(e)}")
 
 def get_reserved_quantity(demat, company_share_id):
@@ -434,9 +461,17 @@ def get_reserved_quantity(demat, company_share_id):
         
     except requests.exceptions.RequestException as e:
         print(f"Get reserved quantity failed: {str(e)}")
-        if hasattr(e, 'response'):
+        if hasattr(e, 'response') and e.response is not None:
             print(f"Response status: {e.response.status_code}")
             print(f"Response text: {e.response.text}")
+        raise Exception(f"Get reserved quantity failed: {str(e)}")
+    except Exception as e:
+        print(f"Get reserved quantity failed: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        if "Expecting value: line 1 column 1 (char 0)" in str(e):
+            print("🔍 Detected JSON parsing error - API returned empty or invalid response")
+            print("🔄 Returning empty dict instead of raising exception")
+            return {}  # Return empty dict instead of raising exception
         raise Exception(f"Get reserved quantity failed: {str(e)}")
 
 def apply_ipo(token, data, user_row, message_kitta=None, share_type_name=None):
@@ -536,7 +571,7 @@ def apply_ipo(token, data, user_row, message_kitta=None, share_type_name=None):
         except Exception as e:
             print(f"❌ IPO Application failed with bank ID {bank_id}: {str(e)}")
             # Try to get response details if available
-            if hasattr(e, 'response'):
+            if hasattr(e, 'response') and e.response is not None:
                 print(f"Response status: {e.response.status_code}")
                 print(f"Response text: {e.response.text}")
             
