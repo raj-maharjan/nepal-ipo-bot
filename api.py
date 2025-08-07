@@ -72,8 +72,26 @@ def login(client_id, username, password):
         "password": password
     }
     
+    # Headers matching the curl request
+    headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9,es;q=0.8,hi;q=0.7,ne;q=0.6',
+        'Authorization': 'null',
+        'Connection': 'keep-alive',
+        'Content-Type': 'application/json',
+        'Origin': 'https://meroshare.cdsc.com.np',
+        'Referer': 'https://meroshare.cdsc.com.np/',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+        'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"'
+    }
+    
     try:
-        response = make_request('POST', url, json=payload)
+        response = make_request('POST', url, json=payload, headers=headers)
         
         # Parse response to check for expiration issues
         response_data = response.json()
