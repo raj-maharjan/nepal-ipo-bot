@@ -17,23 +17,41 @@ def check_ipo_status():
     print('🔍 Checking IPO, FPO, and Right-Share APIs...')
     print(f'⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
     
-    # API endpoints to check
+    # API endpoints to check - ShareSansar API with different type_ids
     apis = [
-        {'name': 'IPO', 'url': 'https://chukul.com/api/ipo/'},
-        {'name': 'FPO', 'url': 'https://chukul.com/api/fpo/'},
-        {'name': 'Right-Share', 'url': 'https://chukul.com/api/right-share/'}
+        {'name': 'IPO', 'type_id': 1},
+        {'name': 'FPO', 'type_id': 2},
+        {'name': 'Right-Share', 'type_id': 3}
     ]
     
-    any_open = False
     results = []
     
     for api in apis:
         try:
-            print(f'📡 Checking {api["name"]} API: {api["url"]}')
+            print(f'📡 Checking {api["name"]} API (type_id: {api["type_id"]})')
+            
+            # ShareSansar API URL with type_id parameter
+            url = f'https://www.sharesansar.com/existing-issues?draw=1&columns%5B0%5D%5Bdata%5D=DT_Row_Index&columns%5B0%5D%5Bname%5D=&columns%5B0%5D%5Bsearchable%5D=false&columns%5B0%5D%5Borderable%5D=false&columns%5B0%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B0%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B1%5D%5Bdata%5D=company.symbol&columns%5B1%5D%5Bname%5D=&columns%5B1%5D%5Bsearchable%5D=true&columns%5B1%5D%5Borderable%5D=false&columns%5B1%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B1%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B2%5D%5Bdata%5D=company.companyname&columns%5B2%5D%5Bname%5D=&columns%5B2%5D%5Bsearchable%5D=true&columns%5B2%5D%5Borderable%5D=false&columns%5B2%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B2%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B3%5D%5Bdata%5D=ratio_value&columns%5B3%5D%5Bname%5D=&columns%5B3%5D%5Bsearchable%5D=false&columns%5B3%5D%5Borderable%5D=false&columns%5B3%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B3%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B4%5D%5Bdata%5D=total_units&columns%5B4%5D%5Bname%5D=&columns%5B4%5D%5Bsearchable%5D=false&columns%5B4%5D%5Borderable%5D=false&columns%5B4%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B4%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B5%5D%5Bdata%5D=issue_price&columns%5B5%5D%5Bname%5D=&columns%5B5%5D%5Bsearchable%5D=false&columns%5B5%5D%5Borderable%5D=false&columns%5B5%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B5%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B6%5D%5Bdata%5D=price_range&columns%5B6%5D%5Bname%5D=&columns%5B6%5D%5Bsearchable%5D=false&columns%5B6%5D%5Borderable%5D=false&columns%5B6%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B6%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B7%5D%5Bdata%5D=cutoff_price&columns%5B7%5D%5Bname%5D=&columns%5B7%5D%5Bsearchable%5D=false&columns%5B7%5D%5Borderable%5D=false&columns%5B7%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B7%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B8%5D%5Bdata%5D=opening_date&columns%5B8%5D%5Bname%5D=&columns%5B8%5D%5Bsearchable%5D=true&columns%5B8%5D%5Borderable%5D=false&columns%5B8%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B8%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B9%5D%5Bdata%5D=closing_date&columns%5B9%5D%5Bname%5D=&columns%5B9%5D%5Bsearchable%5D=true&columns%5B9%5D%5Borderable%5D=false&columns%5B9%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B9%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B10%5D%5Bdata%5D=final_date&columns%5B10%5D%5Bname%5D=&columns%5B10%5D%5Bsearchable%5D=true&columns%5B10%5D%5Borderable%5D=false&columns%5B10%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B10%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B11%5D%5Bdata%5D=listing_date&columns%5B11%5D%5Bname%5D=&columns%5B11%5D%5Bsearchable%5D=true&columns%5B11%5D%5Borderable%5D=false&columns%5B11%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B11%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B12%5D%5Bdata%5D=issue_manager&columns%5B12%5D%5Bname%5D=&columns%5B12%5D%5Bsearchable%5D=false&columns%5B12%5D%5Borderable%5D=false&columns%5B12%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B12%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B13%5D%5Bdata%5D=status&columns%5B13%5D%5Bname%5D=&columns%5B13%5D%5Bsearchable%5D=false&columns%5B13%5D%5Borderable%5D=false&columns%5B13%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B13%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B14%5D%5Bdata%5D=view&columns%5B14%5D%5Bname%5D=&columns%5B14%5D%5Bsearchable%5D=false&columns%5B14%5D%5Borderable%5D=false&columns%5B14%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B14%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B15%5D%5Bdata%5D=right_eligibility_link&columns%5B15%5D%5Bname%5D=&columns%5B15%5D%5Bsearchable%5D=false&columns%5B15%5D%5Borderable%5D=false&columns%5B15%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B15%5D%5Bsearch%5D%5Bregex%5D=false&start=0&length=20&search%5Bvalue%5D=&search%5Bregex%5D=false&type={api["type_id"]}&_=1754586778076'
+            
+            # Headers matching the curl request
+            headers = {
+                'accept': 'application/json, text/javascript, */*; q=0.01',
+                'accept-language': 'en-US,en;q=0.9,es;q=0.8,hi;q=0.7,ne;q=0.6',
+                'priority': 'u=1, i',
+                'referer': 'https://www.sharesansar.com/existing-issues',
+                'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"macOS"',
+                'sec-fetch-dest': 'empty',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-site': 'same-origin',
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+                'x-requested-with': 'XMLHttpRequest'
+            }
             
             response = requests.get(
-                api['url'],
-                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'},
+                url,
+                headers=headers,
                 timeout=(10, 30)
             )
             
@@ -41,13 +59,12 @@ def check_ipo_status():
                 data = response.json()
                 print(f'✅ {api["name"]} API response received')
                 
-                # Check if response is an array and has items
-                if isinstance(data, list) and len(data) > 0:
-                    # Check each item for 'status' field
-                    for item in data:
-                        if isinstance(item, dict) and item.get('status') == 'Open':
+                # Check if response has 'data' field and it's an array with items
+                if isinstance(data, dict) and 'data' in data and isinstance(data['data'], list) and len(data['data']) > 0:
+                    # Check each item for 'status' field (status = 0 means eligible/open)
+                    for item in data['data']:
+                        if isinstance(item, dict) and item.get('status') == 0:
                             print(f'🎯 Found OPEN status in {api["name"]} API')
-                            any_open = True
                             results.append({
                                 'api': api['name'],
                                 'status': 'Open',
@@ -59,7 +76,7 @@ def check_ipo_status():
                         results.append({
                             'api': api['name'],
                             'status': 'No Open Items',
-                            'data': data[:3] if len(data) > 3 else data  # Show first 3 items
+                            'data': data['data'][:3] if len(data['data']) > 3 else data['data']  # Show first 3 items
                         })
                 else:
                     print(f'⚠️ {api["name"]} API returned empty or invalid data')
@@ -99,10 +116,9 @@ def check_ipo_status():
             })
     
     # Set the environment variable
-    apply_for_today = 'true' if any_open else 'false'
+    apply_for_today = 'true' if any(result['status'] == 'Open' for result in results) else 'false'
     
     print(f'\n📊 Summary:')
-    print(f'• Any Open Status: {any_open}')
     print(f'• Apply for Today: {apply_for_today}')
     
     print(f'\n📋 Detailed Results:')
@@ -115,9 +131,8 @@ def check_ipo_status():
     
     # Set output variables for GitHub Actions (using new syntax)
     print(f'\napply_for_today={apply_for_today}')
-    print(f'any_open={str(any_open).lower()}')
     
-    return apply_for_today, any_open, results
+    return apply_for_today, results
 
 def send_ipo_status_notification():
     """
@@ -127,7 +142,6 @@ def send_ipo_status_notification():
     telegram_token = os.getenv('TELEGRAM_BOT_TOKEN')
     telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
     apply_for_today = os.getenv('APPLY_FOR_TODAY', 'false')
-    any_open = os.getenv('ANY_OPEN', 'false')
     
     if not telegram_token or not telegram_chat_id:
         print('❌ Telegram credentials not set')

@@ -7,7 +7,7 @@ import json
 import os
 import sys
 
-def update_repo_variables(apply_for_today, any_open):
+def update_repo_variables(apply_for_today):
     """
     Update repository variables using GitHub API
     """
@@ -39,13 +39,11 @@ def update_repo_variables(apply_for_today, any_open):
     
     # Variables to update
     variables = {
-        'APPLY_FOR_TODAY': str(apply_for_today).lower(),
-        'ANY_OPEN': str(any_open).lower()
+        'APPLY_FOR_TODAY': str(apply_for_today).lower()
     }
     
     print(f"🔄 Updating repository variables...")
     print(f"• APPLY_FOR_TODAY: {variables['APPLY_FOR_TODAY']}")
-    print(f"• ANY_OPEN: {variables['ANY_OPEN']}")
     
     success_count = 0
     
@@ -98,13 +96,12 @@ def update_repo_variables(apply_for_today, any_open):
         return False
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python update_repo_variables.py <apply_for_today> <any_open>")
-        print("Example: python update_repo_variables.py true false")
+    if len(sys.argv) != 2:
+        print("Usage: python update_repo_variables.py <apply_for_today>")
+        print("Example: python update_repo_variables.py true")
         sys.exit(1)
     
     apply_for_today = sys.argv[1].lower() == 'true'
-    any_open = sys.argv[2].lower() == 'true'
     
-    success = update_repo_variables(apply_for_today, any_open)
+    success = update_repo_variables(apply_for_today)
     sys.exit(0 if success else 1) 
