@@ -72,26 +72,24 @@ def login(client_id, username, password):
         "password": password
     }
     
-    # Headers matching the curl request
+    # Headers exactly matching the successful curl request
     headers = {
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9,es;q=0.8,hi;q=0.7,ne;q=0.6',
+        'sec-ch-ua-platform': '"macOS"',
         'Authorization': 'null',
-        'Connection': 'keep-alive',
-        'Content-Type': 'application/json',
-        'Origin': 'https://meroshare.cdsc.com.np',
         'Referer': 'https://meroshare.cdsc.com.np/',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-site',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
-        'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+        'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
         'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"'
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json'
     }
     
     try:
-        response = make_request('POST', url, json=payload, headers=headers)
+        # Use a fresh session for login to avoid any session-related issues
+        import requests
+        login_session = requests.Session()
+        response = login_session.post(url, json=payload, headers=headers, timeout=(10, 30))
+        response.raise_for_status()
         
         # Parse response to check for expiration issues
         response_data = response.json()
@@ -124,16 +122,24 @@ def login(client_id, username, password):
             cdsc_token = auth_header
         
         # Store cookies for future requests
-        cdsc_cookies = response.cookies
+        cdsc_cookies = login_session.cookies
         
         return cdsc_token
         
     except Exception as e:
         print(f"CDSC Authentication failed: {str(e)}")
         print(f"Exception type: {type(e)}")
+        
+        # Add more detailed error logging
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Response status code: {e.response.status_code}")
+            print(f"Response headers: {dict(e.response.headers)}")
+            print(f"Response text: {e.response.text}")
+        
         if "Expecting value: line 1 column 1 (char 0)" in str(e):
             print("🔍 Detected JSON parsing error - API returned empty or invalid response")
             print("🔄 This suggests the CDSC API is temporarily unavailable")
+        
         raise Exception(f"Authentication failed: {str(e)}")
 
 def get_auth_headers():
