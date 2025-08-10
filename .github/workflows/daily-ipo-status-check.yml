@@ -62,27 +62,34 @@ jobs:
     - name: Update Repository Variables
       env:
         PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
       run: |
         # Update repository variables using GitHub API with PAT
-        python utils/update_repo_variables.py "${{ env.APPLY_FOR_TODAY }}"
+        python utils/update_repo_variables.py "$APPLY_FOR_TODAY"
     
     - name: Display Results
+      env:
+        APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
+        DETAILED_RESULTS: ${{ steps.read-results.outputs.results }}
       run: |
         echo "🎯 Final Results:"
-        echo "• Apply for Today: ${{ env.APPLY_FOR_TODAY }}"
-        echo "• Detailed Results: ${{ steps.read-results.outputs.results }}"
+        echo "• Apply for Today: $APPLY_FOR_TODAY"
+        echo "• Detailed Results: $DETAILED_RESULTS"
         
-        if [ "${{ env.APPLY_FOR_TODAY }}" = "true" ]; then
+        if [ "$APPLY_FOR_TODAY" = "true" ]; then
           echo "✅ Setting apply_for_today to true - IPOs/FPOs/Right-Shares are available!"
         else
           echo "ℹ️ Setting apply_for_today to false - No open IPOs/FPOs/Right-Shares found"
         fi
     
     - name: Debug Repository Variables
+      env:
+        APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
+        REPO_APPLY_FOR_TODAY: ${{ vars.APPLY_FOR_TODAY }}
       run: |
         echo "🔍 Debugging Repository Variables:"
-        echo "• Repository APPLY_FOR_TODAY: ${{ vars.APPLY_FOR_TODAY }}"
-        echo "• Workflow APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}"
+        echo "• Repository APPLY_FOR_TODAY: $REPO_APPLY_FOR_TODAY"
+        echo "• Workflow APPLY_FOR_TODAY: $APPLY_FOR_TODAY"
         
         echo ""
         echo "📋 Summary:"
@@ -91,12 +98,14 @@ jobs:
         echo ""
         echo "💡 To update repository variables manually:"
         echo "1. Go to Settings → Secrets and variables → Actions → Variables"
-        echo "2. Update APPLY_FOR_TODAY to: ${{ env.APPLY_FOR_TODAY }}"
+        echo "2. Update APPLY_FOR_TODAY to: $APPLY_FOR_TODAY"
     
     - name: Show Current Status
+      env:
+        APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
       run: |
         echo "🔄 Current IPO Status:"
-        echo "• APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}"
+        echo "• APPLY_FOR_TODAY: $APPLY_FOR_TODAY"
         
         echo ""
         echo "📋 Manual Update Required:"
@@ -104,7 +113,7 @@ jobs:
         echo "Settings → Secrets and variables → Actions → Variables"
         echo ""
         echo "Set these values:"
-        echo "• APPLY_FOR_TODAY = ${{ env.APPLY_FOR_TODAY }}"
+        echo "• APPLY_FOR_TODAY = $APPLY_FOR_TODAY"
     
     - name: Send Telegram Notification
       if: always()
