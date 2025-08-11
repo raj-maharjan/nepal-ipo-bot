@@ -7,7 +7,6 @@ import time
 
 # Global variables to store authentication data
 cdsc_token = None
-cdsc_cookies = None
 
 # Create a session with retry strategy
 def create_session():
@@ -61,9 +60,9 @@ def make_request(method, url, **kwargs):
 
 def login(client_id, username, password):
     """
-    Authenticate with CDSC API and store JWT token and cookies
+    Authenticate with CDSC API and store JWT token only
     """
-    global cdsc_token, cdsc_cookies
+    global cdsc_token
     
     url = "https://webbackend.cdsc.com.np/api/meroShare/auth/"
     payload = {
@@ -85,10 +84,8 @@ def login(client_id, username, password):
     }
     
     try:
-        # Use a fresh session for login to avoid any session-related issues
-        import requests
-        login_session = requests.Session()
-        response = login_session.post(url, json=payload, headers=headers, timeout=(10, 30))
+        # Use a simple request without session management
+        response = requests.post(url, json=payload, headers=headers, timeout=(10, 30))
         response.raise_for_status()
         
         # Parse response to check for expiration issues
@@ -121,9 +118,6 @@ def login(client_id, username, password):
             # If not in Authorization header, check for JWT in response body
             cdsc_token = auth_header
         
-        # Store cookies for future requests
-        cdsc_cookies = login_session.cookies
-        
         return cdsc_token
         
     except Exception as e:
@@ -147,12 +141,15 @@ def get_auth_headers():
     Get headers with authentication for CDSC API calls
     """
     headers = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'sec-ch-ua-platform': '"macOS"',
+        'Authorization': cdsc_token if cdsc_token else '',
+        'Referer': 'https://meroshare.cdsc.com.np/',
+        'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+        'sec-ch-ua-mobile': '?0',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json'
     }
-    
-    if cdsc_token:
-        headers['Authorization'] = cdsc_token
     
     return headers
 
@@ -165,14 +162,34 @@ def get_applicable_issues():
     if not cdsc_token:
         raise Exception("Not authenticated. Please login first.")
     
+            # No delay needed since we're not using sessions
+        print("✅ Using JWT token authentication without session management")
+    
     url = "https://webbackend.cdsc.com.np/api/meroShare/companyShare/applicableIssue/"
     
     headers = get_auth_headers()
     payload = {"filterFieldParams":[{"key":"companyIssue.companyISIN.script","alias":"Scrip"},{"key":"companyIssue.companyISIN.company.name","alias":"Company Name"},{"key":"companyIssue.assignedToClient.name","value":"","alias":"Issue Manager"}],"page":1,"size":10,"searchRoleViewConstants":"VIEW_APPLICABLE_SHARE","filterDateParams":[{"key":"minIssueOpenDate","condition":"","alias":"","value":""},{"key":"maxIssueCloseDate","condition":"","alias":"","value":""}]}
     
     try:
-        response = make_request('POST', url, json=payload, headers=headers, cookies=cdsc_cookies)
-        response_data = response.json()
+        # Use simple request without session management
+        response = requests.post(url, json=payload, headers=headers, timeout=(10, 30))
+        response.raise_for_status()
+        
+        # Debug response
+        print(f"Response status: {response.status_code}")
+        print(f"Response text: {response.text}")
+        
+        # Debug headers being sent
+        print(f"Headers being sent: {headers}")
+        print(f"Authorization header: {headers.get('Authorization', 'NOT_SET')}")
+        
+        # Try to parse JSON
+        try:
+            response_data = response.json()
+        except Exception as json_error:
+            print(f"JSON parsing error: {json_error}")
+            print(f"Raw response: {response.text}")
+            raise Exception(f"Invalid JSON response: {response.text}")
         print(f"Response data: {response_data}")
         # Extract the actual issues from the response
         # The response has a structure like {"object": [...], "totalCount": 0}
@@ -238,9 +255,17 @@ def get_applicable_issues():
             
     except requests.exceptions.RequestException as e:
         print(f"Get applicable issues failed 1: {str(e)}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response headers: {dict(e.response.headers)}")
+            print(f"Response text: {e.response.text}")
         return []
     except Exception as e:
         print(f"Get applicable issues failed 3: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        if "Expecting value: line 1 column 1 (char 0)" in str(e):
+            print("🔍 Detected JSON parsing error - API returned empty or invalid response")
+            print("🔄 This suggests the CDSC API is temporarily unavailable or headers are incorrect")
         return []
 
 def find_applicable_issue_by_company(applicable_issues: list, company_name: str) -> Optional[Dict[str, Any]]:
@@ -303,7 +328,9 @@ def get_user_details():
     headers = get_auth_headers()
     
     try:
-        response = make_request('GET', url, headers=headers, cookies=cdsc_cookies)
+        # Use simple request without session management
+        response = requests.get(url, headers=headers, timeout=(10, 30))
+        response.raise_for_status()
         user_data = response.json()
         
         print(f"User details from CDSC API: {user_data}")
@@ -336,7 +363,9 @@ def get_bank_ids():
     headers = get_auth_headers()
     
     try:
-        response = make_request('GET', url, headers=headers, cookies=cdsc_cookies)
+        # Use simple request without session management
+        response = requests.get(url, headers=headers, timeout=(10, 30))
+        response.raise_for_status()
         bank_data = response.json()
         
         print(f"Bank data from CDSC API: {bank_data}")
@@ -388,7 +417,9 @@ def get_account_details(bank_id):
     headers = get_auth_headers()
     
     try:
-        response = make_request('GET', url, headers=headers, cookies=cdsc_cookies)
+        # Use simple request without session management
+        response = requests.get(url, headers=headers, timeout=(10, 30))
+        response.raise_for_status()
         account_data = response.json()
         
         print(f"Account data from CDSC API for bank {bank_id}: {account_data}")
@@ -461,7 +492,9 @@ def get_reserved_quantity(demat, company_share_id):
     headers = get_auth_headers()
     
     try:
-        response = make_request('GET', url, headers=headers, cookies=cdsc_cookies)
+        # Use simple request without session management
+        response = requests.get(url, headers=headers, timeout=(10, 30))
+        response.raise_for_status()
         response_data = response.json()
         
         print(f"Reserved quantity response: {response_data}")
@@ -588,7 +621,9 @@ def apply_ipo(token, data, user_row, message_kitta=None, share_type_name=None):
             
             print(f"Applying IPO with data: {application_data}")
             
-            response = make_request('POST', url, json=application_data, headers=headers, cookies=cdsc_cookies)
+            # Use simple request without session management
+            response = requests.post(url, json=application_data, headers=headers, timeout=(10, 30))
+            response.raise_for_status()
             print(f"✅ IPO Application successful with bank ID: {bank_id}")
             return response.json()
             
