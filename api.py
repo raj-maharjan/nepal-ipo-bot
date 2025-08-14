@@ -243,7 +243,7 @@ def get_applicable_issues():
                 
             # Filter out issues that are already in process
             action = issue.get("action", "")
-            if action == "inProcess" or action == "reapply":
+            if action == "inProcess":
                 print(f"Skipping issue - action: {action} (already applied): {issue.get('scrip')} - {issue.get('companyName')}")
                 continue
                 

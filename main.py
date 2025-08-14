@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel
 from sheets import get_sheet_data
-from parser import extract_person_company_and_kitta
+from parser import extract_person_company_and_kitta # type: ignore
 from api import login, apply_ipo, get_applicable_issues, find_applicable_issue_by_company
 import requests
 import os
@@ -245,6 +245,14 @@ async def apply_all_issues(request: ApplyRequest) -> Dict[str, Any]:
         if isinstance(applicable_issues, list) and len(applicable_issues) > 0:
             for issue in applicable_issues:
                 try:
+                    if issue.get('action') == 'reapply':
+                        failed_issues.append({
+                        "company": issue.get('companyName'),
+                        "scrip": issue.get('scrip'),
+                        "reason": "ASBA Hold Failed" 
+                        })
+                        continue
+                    
                     print(f"Processing issue: {issue.get('scrip')} - {issue.get('companyName')}")
                     
                     # Apply for IPO
@@ -379,6 +387,13 @@ async def apply_all_issues_get(user_name: str) -> Dict[str, Any]:
                 try:
                     print(f"Processing issue: {issue.get('scrip')} - {issue.get('companyName')}")
                     
+                    if issue.get('action') == 'reapply':
+                        failed_issues.append({
+                        "company": issue.get('companyName'),
+                        "scrip": issue.get('scrip'),
+                        "reason": "ASBA Hold Failed" 
+                        })
+                        continue
                     # Apply for IPO
                     ipo_result = apply_ipo(token, {
                         "companyShareId": issue["companyShareId"]
