@@ -80,7 +80,7 @@ jobs:
         user_name = input_user_name if input_user_name and input_user_name.strip() else user_name
         
         print(f'🚀 Starting IPO application for user: {user_name}')
-        print(f'⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+        print(f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}')
         
         try:
             # Call the webhook with retry mechanism

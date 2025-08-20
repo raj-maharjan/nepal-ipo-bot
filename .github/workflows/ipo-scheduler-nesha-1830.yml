@@ -80,7 +80,7 @@ jobs:
         user_name = input_user_name if input_user_name and input_user_name.strip() else user_name
         
         print(f'🚀 Starting IPO application for user: {user_name}')
-        print(f'⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+        print(f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}')
         
         try:
             # Call the webhook with retry mechanism
@@ -134,11 +134,11 @@ jobs:
                 
                 # Check if the response indicates an error
                 if result.get('status') == 'error':
-                    print(f'❌ IPO application failed: {result.get("message", "Unknown error")}')
+                    print(f'❌ IPO application failed: {result.get(\"message\", \"Unknown error\")}')
                     error_msg = f'❌ GitHub Action: IPO Application Failed\n\n'
                     error_msg += f'👤 User: {user_name}\n'
-                    error_msg += f'⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n'
-                    error_msg += f'📄 Error: {result.get("message", "Unknown error")}'
+                    error_msg += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n'
+                    error_msg += f'📄 Error: {result.get(\"message\", \"Unknown error\")}'
                     
                     if telegram_token and telegram_chat_id:
                         telegram_response = requests.post(
@@ -163,20 +163,20 @@ jobs:
                         cdsc_name = result.get('cdsc_name', user_name)
                         notification = f'🤖 GitHub Action: IPO Application Complete\n\n'
                         notification += f'👤 User: {cdsc_name}\n'
-                        notification += f'⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n\n'
+                        notification += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n\n'
                         notification += f'📊 Results:\n'
-                        notification += f'• Successfully Applied: {result.get("total_applied", 0)}\n'
-                        notification += f'• Failed Applications: {result.get("total_failed", 0)}\n'
+                        notification += f'• Successfully Applied: {result.get(\"total_applied\", 0)}\n'
+                        notification += f'• Failed Applications: {result.get(\"total_failed\", 0)}\n'
                         
                         if result.get('applied_issues'):
                             notification += '\n✅ Applied Issues:\n'
                             for issue in result['applied_issues']:
-                                notification += f'• {issue["scrip"]} - {issue["company"]}\n'
+                                notification += f'• {issue[\"scrip\"]} - {issue[\"company\"]}\n'
                         
                         if result.get('failed_issues'):
                             notification += '\n❌ Failed Issues:\n'
                             for issue in result['failed_issues']:
-                                notification += f'• {issue["scrip"]} - {issue["company"]} ({issue["reason"]})\n'
+                                notification += f'• {issue[\"scrip\"]} - {issue[\"company\"]} ({issue[\"reason\"]})\n'
                         
                         telegram_response = requests.post(
                             f'https://api.telegram.org/bot{telegram_token}/sendMessage',
@@ -198,7 +198,7 @@ jobs:
                 print(f'❌ IPO application failed with status: {response.status_code}')
                 error_msg = f'❌ GitHub Action: IPO Application Failed\n\n'
                 error_msg += f'👤 User: {user_name}\n'
-                error_msg += f'⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n'
+                error_msg += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n'
                 error_msg += f'📡 Status: {response.status_code}\n'
                 error_msg += f'📄 Response: {response.text}'
                 
@@ -216,7 +216,7 @@ jobs:
             print(f'❌ Exception occurred: {str(e)}')
             error_msg = f'❌ GitHub Action: Exception Occurred\n\n'
             error_msg += f'👤 User: {user_name}\n'
-            error_msg += f'⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n'
+            error_msg += f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}\n'
             error_msg += f'💥 Error: {str(e)}'
             
             if telegram_token and telegram_chat_id:
