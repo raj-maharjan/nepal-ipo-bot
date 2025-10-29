@@ -60,7 +60,6 @@ jobs:
         echo "• APPLY_FOR_TODAY = $APPLY_FOR_TODAY"
     
     - name: Update Repository Variables
-      continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ github.token }}
         APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
