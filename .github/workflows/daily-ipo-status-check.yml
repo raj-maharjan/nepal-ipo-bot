@@ -61,10 +61,10 @@ jobs:
     
     - name: Update Repository Variables
       env:
-        PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
         APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
       run: |
-        # Update repository variables using GitHub API with PAT
+        # Update repository variables using GitHub API
         python utils/update_repo_variables.py "$APPLY_FOR_TODAY"
     
     - name: Display Results
