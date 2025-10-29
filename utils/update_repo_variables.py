@@ -49,42 +49,36 @@ def update_repo_variables(apply_for_today):
     
     for var_name, var_value in variables.items():
         try:
-            # Check if variable exists
-            check_url = f"{api_url}/{var_name}"
-            check_response = requests.get(check_url, headers=headers)
-            
-            if check_response.status_code == 200:
-                # Variable exists, update it
-                update_url = f"{api_url}/{var_name}"
-                update_data = {
-                    'name': var_name,
-                    'value': var_value
-                }
-                
-                response = requests.patch(update_url, headers=headers, json=update_data)
-                
-                if response.status_code == 204:
-                    print(f"✅ Updated {var_name} = {var_value}")
-                    success_count += 1
-                else:
-                    print(f"❌ Failed to update {var_name}: {response.status_code}")
-                    print(f"Response: {response.text}")
-            else:
-                # Variable doesn't exist, create it
+            # Try to update first (works when variable already exists)
+            update_url = f"{api_url}/{var_name}"
+            update_data = {
+                'name': var_name,
+                'value': var_value
+            }
+            response = requests.patch(update_url, headers=headers, json=update_data)
+
+            if response.status_code == 204:
+                print(f"✅ Updated {var_name} = {var_value}")
+                success_count += 1
+                continue
+
+            # If not found, try to create
+            if response.status_code == 404:
                 create_data = {
                     'name': var_name,
                     'value': var_value
                 }
-                
                 response = requests.post(api_url, headers=headers, json=create_data)
-                
+
                 if response.status_code == 201:
                     print(f"✅ Created {var_name} = {var_value}")
                     success_count += 1
                 else:
                     print(f"❌ Failed to create {var_name}: {response.status_code}")
                     print(f"Response: {response.text}")
-                    
+            else:
+                print(f"❌ Failed to update {var_name}: {response.status_code}")
+                print(f"Response: {response.text}")
         except Exception as e:
             print(f"❌ Error updating {var_name}: {str(e)}")
     

@@ -60,6 +60,7 @@ jobs:
         echo "• APPLY_FOR_TODAY = $APPLY_FOR_TODAY"
     
     - name: Update Repository Variables
+      continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ github.token }}
         APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
@@ -74,7 +75,6 @@ jobs:
       run: |
         echo "🎯 Final Results:"
         echo "• Apply for Today: $APPLY_FOR_TODAY"
-        echo "• Detailed Results: $DETAILED_RESULTS"
         
         if [ "$APPLY_FOR_TODAY" = "true" ]; then
           echo "✅ Setting apply_for_today to true - IPOs/FPOs/Right-Shares are available!"
