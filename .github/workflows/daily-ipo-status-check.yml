@@ -59,12 +59,20 @@ jobs:
         echo "✅ Environment variables set:"
         echo "• APPLY_FOR_TODAY = $APPLY_FOR_TODAY"
     
+    - name: Debug PAT Token Scopes (non-sensitive)
+      env:
+        PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      run: |
+        echo "🔐 Inspecting PAT scopes (from response headers)..."
+        curl -s -o /dev/null -D - -H "Authorization: token $PAT_TOKEN" https://api.github.com/user \
+          | grep -i -E "^X-OAuth-Scopes:|^X-GitHub-SSO:" || true
+    
     - name: Update Repository Variables
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         APPLY_FOR_TODAY: ${{ env.APPLY_FOR_TODAY }}
       run: |
-        # Update repository variables using GitHub API
+        # Update repository variables using GitHub API with PAT
         python utils/update_repo_variables.py "$APPLY_FOR_TODAY"
     
     - name: Display Results
