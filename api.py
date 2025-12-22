@@ -480,6 +480,52 @@ def get_account_details(bank_id):
             return {}  # Return empty dict instead of raising exception
         raise Exception(f"Get account details failed for bank {bank_id}: {str(e)}")
 
+def get_active_share_details(company_share_id):
+    """
+    Get active share details from CDSC API
+    """
+    if not cdsc_token:
+        raise Exception("Not authenticated. Please login first.")
+    
+    url = f"https://webbackend.cdsc.com.np/api/meroShare/active/{company_share_id}"
+    
+    headers = get_auth_headers()
+    
+    try:
+        # Use simple request without session management
+        response = requests.get(url, headers=headers, timeout=(10, 30))
+        response.raise_for_status()
+        response_data = response.json()
+        
+        print(f"Active share details response: {response_data}")
+        
+        # Extract minUnit from response
+        min_unit = response_data.get("minUnit")
+        
+        if min_unit is None:
+            raise Exception("No minUnit found in response")
+        
+        print(f"Extracted minUnit: {min_unit}")
+        
+        return {
+            "minUnit": min_unit
+        }
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Get active share details failed: {str(e)}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response text: {e.response.text}")
+        raise Exception(f"Get active share details failed: {str(e)}")
+    except Exception as e:
+        print(f"Get active share details failed: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        if "Expecting value: line 1 column 1 (char 0)" in str(e):
+            print("🔍 Detected JSON parsing error - API returned empty or invalid response")
+            print("🔄 Returning empty dict instead of raising exception")
+            return {}  # Return empty dict instead of raising exception
+        raise Exception(f"Get active share details failed: {str(e)}")
+
 def get_reserved_quantity(demat, company_share_id):
     """
     Get reserved quantity for RESERVED share types from CDSC API
@@ -552,20 +598,30 @@ def apply_ipo(token, data, user_row, message_kitta=None, share_type_name=None):
     if not bank_ids:
         raise Exception("No bank IDs available from CDSC API")
     
-    # Determine appliedKitta with priority: message > sheet > default
+    # Determine appliedKitta with priority: message > API > default
     applied_kitta = "10"  # Default value
     
-    # Check sheet first
-    sheet_kitta = user_row.get("appliedKitta")
-    if sheet_kitta and sheet_kitta != "":
-        applied_kitta = str(sheet_kitta)
+    # Get minUnit from API
+    try:
+        company_share_id = data.get("companyShareId", "")
+        if company_share_id:
+            active_share_data = get_active_share_details(company_share_id)
+            min_unit = active_share_data.get("minUnit")
+            if min_unit is not None:
+                applied_kitta = str(min_unit)
+                print(f"Using minUnit from API: {applied_kitta}")
+            else:
+                print(f"minUnit not found in API response, using default: {applied_kitta}")
+        else:
+            print(f"Company share ID not found in data, using default: {applied_kitta}")
+    except Exception as e:
+        print(f"Failed to get minUnit from API: {str(e)}")
+        print(f"Using default kitta: {applied_kitta}")
     
     # Override with message kitta if provided
     if message_kitta:
         applied_kitta = str(message_kitta)
         print(f"Using kitta from message: {applied_kitta}")
-    else:
-        print(f"Using kitta from sheet: {applied_kitta}")
     
     # Handle RESERVED share types - get reserved quantity from API
     share_criteria_id = None
