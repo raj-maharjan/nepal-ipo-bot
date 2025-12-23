@@ -1,20 +1,123 @@
-name: IPO Application Scheduler - 10:00 PM
+name: IPO Application Scheduler (Unified)
 
 on:
   schedule:
-    # Run at 10:00 PM NPT every 24 hours (16:15 UTC)
-    - cron: '15 16 * * *'
+    # All schedules for different users
+    - cron: '15 1 * * *'   # 7:00 AM NPT - anjana
+    - cron: '15 2 * * *'   # 8:00 AM NPT - pralina
+    - cron: '15 3 * * *'   # 9:00 AM NPT - prazoon
+    - cron: '15 4 * * *'   # 10:00 AM NPT - aayansh
+    - cron: '45 5 * * *'   # 11:30 AM NPT - raj
+    - cron: '45 6 * * *'   # 12:30 PM NPT - dad
+    - cron: '20 7 * * *'   # 1:05 PM NPT - nirmala
+    - cron: '45 7 * * *'   # 1:30 PM NPT - mom
+    - cron: '20 8 * * *'   # 2:05 PM NPT - kyanjuri
+    - cron: '45 8 * * *'   # 2:30 PM NPT - kaka
+    - cron: '45 9 * * *'   # 3:30 PM NPT - barsha
+    - cron: '55 11 * * *'  # 4:40 PM NPT - prakash
+    - cron: '45 11 * * *'  # 5:30 PM NPT - aunty
+    - cron: '15 12 * * *'  # 6:00 PM NPT - ramita
+    - cron: '45 12 * * *'  # 6:30 PM NPT - nesha
+    - cron: '45 13 * * *'  # 7:30 PM NPT - ritanene
+    - cron: '15 14 * * *'  # 8:00 PM NPT - shristy
+    - cron: '15 15 * * *'  # 9:00 PM NPT - prasanta
+    - cron: '45 15 * * *'  # 9:30 PM NPT - evanshi
+    - cron: '15 16 * * *'  # 10:00 PM NPT - grishant
+    - cron: '15 17 * * *'  # 11:00 PM NPT - laxyata
+    - cron: '15 18 * * *'  # 11:30 PM NPT - jaynil
+    - cron: '15 20 * * *'  # 2:00 AM NPT - sushila
+    - cron: '15 21 * * *'  # 3:00 AM NPT - simona
+    - cron: '15 22 * * *'  # 4:00 AM NPT - balaram
   workflow_dispatch:
     inputs:
       user_name:
-        description: 'User name to apply IPOs for'
-        required: true
-        default: 'user18'
+        description: 'User name to apply IPOs for (e.g., user1, user2, etc.)'
+        required: false
+        default: ''
         type: string
 
 jobs:
+  determine-user:
+    runs-on: ubuntu-latest
+    outputs:
+      user_id: ${{ steps.determine.outputs.user_id }}
+      user_secret: ${{ steps.determine.outputs.user_secret }}
+      user_display_name: ${{ steps.determine.outputs.user_display_name }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Determine user from schedule
+      id: determine
+      run: |
+        # Get current UTC time
+        CURRENT_HOUR=$(date -u +%H)
+        CURRENT_MINUTE=$(date -u +%M)
+        
+        echo "Current UTC time: ${CURRENT_HOUR}:${CURRENT_MINUTE}"
+        
+        # Check if user_name was provided via workflow_dispatch
+        MANUAL_USER="${{ github.event.inputs.user_name }}"
+        if [ -n "$MANUAL_USER" ]; then
+          echo "Manual user specified: $MANUAL_USER"
+          # Extract user number from user_name (e.g., user11 -> 11)
+          USER_NUM=$(echo "$MANUAL_USER" | sed 's/user//')
+          echo "user_id=$MANUAL_USER" >> $GITHUB_OUTPUT
+          echo "user_secret=USER${USER_NUM}_NAME" >> $GITHUB_OUTPUT
+          echo "user_display_name=$MANUAL_USER" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        # Read config file and determine user based on current time
+        python3 << 'EOF'
+        import json
+        import os
+        from datetime import datetime
+        
+        # Get current UTC time
+        now = datetime.utcnow()
+        current_hour = now.hour
+        current_minute = now.minute
+        
+        # Read config file
+        with open('.github/workflows/ipo-scheduler-config.json', 'r') as f:
+            config = json.load(f)
+        
+        # Find matching user based on schedule
+        matched_user = None
+        for user in config['users']:
+            schedule = user['schedule']
+            if schedule['utc_hour'] == current_hour and schedule['utc_minute'] == current_minute:
+                matched_user = user
+                break
+        
+        if matched_user:
+            user_id = matched_user['user_id']
+            user_secret = matched_user['user_secret']
+            user_display_name = matched_user['name']
+            schedule = matched_user['schedule']
+            
+            # Write to GITHUB_OUTPUT
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write(f"user_id={user_id}\n")
+                f.write(f"user_secret={user_secret}\n")
+                f.write(f"user_display_name={user_display_name}\n")
+            
+            print(f"✅ Matched user: {user_display_name} ({user_id}) at {schedule['npt_time']} NPT")
+        else:
+            print(f"❌ No user found for schedule {current_hour}:{current_minute:02d} UTC")
+            # Write empty outputs
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write("user_id=\n")
+                f.write("user_secret=\n")
+                f.write("user_display_name=\n")
+            exit(1)
+        EOF
+
   check-ipo-status:
     runs-on: ubuntu-latest
+    needs: determine-user
+    if: needs.determine-user.outputs.user_id != ''
     outputs:
       should_apply: ${{ steps.check-status.outputs.should_apply }}
     steps:
@@ -31,8 +134,8 @@ jobs:
 
   apply-ipos:
     runs-on: ubuntu-latest
-    needs: check-ipo-status
-    if: needs.check-ipo-status.outputs.should_apply == 'true'
+    needs: [determine-user, check-ipo-status]
+    if: needs.determine-user.outputs.user_id != '' && needs.check-ipo-status.outputs.should_apply == 'true'
     
     steps:
     - name: Checkout code
@@ -48,12 +151,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
     
-    - name: Apply IPOs for user18
+    - name: Apply IPOs for ${{ needs.determine-user.outputs.user_display_name }} (${{ needs.determine-user.outputs.user_id }})
       env:
         WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        USER_NAME: ${{ secrets.USER18_NAME }}
+        USER_NAME: ${{ secrets[needs.determine-user.outputs.user_secret] }}
       run: |
         python -c "
         import requests
@@ -228,4 +331,5 @@ jobs:
                         'parse_mode': 'HTML'
                     }
                 )
-        " 
+        "
+
