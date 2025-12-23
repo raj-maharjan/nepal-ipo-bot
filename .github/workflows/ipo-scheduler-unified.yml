@@ -64,41 +64,68 @@ jobs:
           MANUAL_USER="$MANUAL_USER" python3 << 'EOF'
           import json
           import os
+          import sys
           
-          manual_user = os.environ.get('MANUAL_USER', '')
-          
-          # Read config file
-          with open('.github/workflows/ipo-scheduler-config.json', 'r') as f:
-              config = json.load(f)
-          
-          # Find user in config
-          matched_user = None
-          for user in config['users']:
-              if user['user_id'] == manual_user:
-                  matched_user = user
-                  break
-          
-          if matched_user:
-              user_id = matched_user['user_id']
-              user_secret = matched_user['user_secret']
-              user_display_name = matched_user['name']
+          try:
+              manual_user = os.environ.get('MANUAL_USER', '')
               
-              # Write to GITHUB_OUTPUT
-              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                  f.write(f"user_id={user_id}\n")
-                  f.write(f"user_secret={user_secret}\n")
-                  f.write(f"user_display_name={user_display_name}\n")
+              if not manual_user:
+                  print("❌ MANUAL_USER environment variable not set")
+                  sys.exit(1)
               
-              print(f"✅ Found user: {user_display_name} ({user_id})")
-          else:
-              print(f"❌ User '{manual_user}' not found in config file")
-              # Write empty outputs
-              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                  f.write("user_id=\n")
-                  f.write("user_secret=\n")
-                  f.write("user_display_name=\n")
-              exit(1)
+              github_output = os.environ.get('GITHUB_OUTPUT')
+              if not github_output:
+                  print("❌ GITHUB_OUTPUT environment variable not set")
+                  sys.exit(1)
+              
+              config_path = '.github/workflows/ipo-scheduler-config.json'
+              if not os.path.exists(config_path):
+                  print(f"❌ Config file not found: {config_path}")
+                  sys.exit(1)
+              
+              # Read config file
+              with open(config_path, 'r') as f:
+                  config = json.load(f)
+              
+              # Find user in config
+              matched_user = None
+              for user in config['users']:
+                  if user['user_id'] == manual_user:
+                      matched_user = user
+                      break
+              
+              if matched_user:
+                  user_id = matched_user['user_id']
+                  user_secret = matched_user['user_secret']
+                  user_display_name = matched_user['name']
+                  
+                  # Write to GITHUB_OUTPUT
+                  with open(github_output, 'a') as f:
+                      f.write(f"user_id={user_id}\n")
+                      f.write(f"user_secret={user_secret}\n")
+                      f.write(f"user_display_name={user_display_name}\n")
+                  
+                  print(f"✅ Found user: {user_display_name} ({user_id})")
+              else:
+                  print(f"❌ User '{manual_user}' not found in config file")
+                  print(f"Available users: {[u['user_id'] for u in config['users']]}")
+                  # Write empty outputs
+                  with open(github_output, 'a') as f:
+                      f.write("user_id=\n")
+                      f.write("user_secret=\n")
+                      f.write("user_display_name=\n")
+                  sys.exit(1)
+          except Exception as e:
+              print(f"❌ Error in Python script: {str(e)}")
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
           EOF
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to determine user from manual input"
+            exit 1
+          fi
           exit 0
         fi
         
@@ -106,46 +133,63 @@ jobs:
         python3 << 'EOF'
         import json
         import os
+        import sys
         from datetime import datetime
         
-        # Get current UTC time
-        now = datetime.utcnow()
-        current_hour = now.hour
-        current_minute = now.minute
-        
-        # Read config file
-        with open('.github/workflows/ipo-scheduler-config.json', 'r') as f:
-            config = json.load(f)
-        
-        # Find matching user based on schedule
-        matched_user = None
-        for user in config['users']:
-            schedule = user['schedule']
-            if schedule['utc_hour'] == current_hour and schedule['utc_minute'] == current_minute:
-                matched_user = user
-                break
-        
-        if matched_user:
-            user_id = matched_user['user_id']
-            user_secret = matched_user['user_secret']
-            user_display_name = matched_user['name']
-            schedule = matched_user['schedule']
+        try:
+            github_output = os.environ.get('GITHUB_OUTPUT')
+            if not github_output:
+                print("❌ GITHUB_OUTPUT environment variable not set")
+                sys.exit(1)
             
-            # Write to GITHUB_OUTPUT
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                f.write(f"user_id={user_id}\n")
-                f.write(f"user_secret={user_secret}\n")
-                f.write(f"user_display_name={user_display_name}\n")
+            config_path = '.github/workflows/ipo-scheduler-config.json'
+            if not os.path.exists(config_path):
+                print(f"❌ Config file not found: {config_path}")
+                sys.exit(1)
             
-            print(f"✅ Matched user: {user_display_name} ({user_id}) at {schedule['npt_time']} NPT")
-        else:
-            print(f"❌ No user found for schedule {current_hour}:{current_minute:02d} UTC")
-            # Write empty outputs
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                f.write("user_id=\n")
-                f.write("user_secret=\n")
-                f.write("user_display_name=\n")
-            exit(1)
+            # Get current UTC time
+            now = datetime.utcnow()
+            current_hour = now.hour
+            current_minute = now.minute
+            
+            # Read config file
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Find matching user based on schedule
+            matched_user = None
+            for user in config['users']:
+                schedule = user['schedule']
+                if schedule['utc_hour'] == current_hour and schedule['utc_minute'] == current_minute:
+                    matched_user = user
+                    break
+            
+            if matched_user:
+                user_id = matched_user['user_id']
+                user_secret = matched_user['user_secret']
+                user_display_name = matched_user['name']
+                schedule = matched_user['schedule']
+                
+                # Write to GITHUB_OUTPUT
+                with open(github_output, 'a') as f:
+                    f.write(f"user_id={user_id}\n")
+                    f.write(f"user_secret={user_secret}\n")
+                    f.write(f"user_display_name={user_display_name}\n")
+                
+                print(f"✅ Matched user: {user_display_name} ({user_id}) at {schedule['npt_time']} NPT")
+            else:
+                print(f"❌ No user found for schedule {current_hour}:{current_minute:02d} UTC")
+                # Write empty outputs
+                with open(github_output, 'a') as f:
+                    f.write("user_id=\n")
+                    f.write("user_secret=\n")
+                    f.write("user_display_name=\n")
+                sys.exit(1)
+        except Exception as e:
+            print(f"❌ Error in Python script: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
         EOF
 
   check-ipo-status:
