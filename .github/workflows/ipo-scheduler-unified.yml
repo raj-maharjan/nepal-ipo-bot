@@ -50,6 +50,8 @@ jobs:
     - name: Determine user from schedule
       id: determine
       run: |
+        set -e  # Exit on error
+        
         # Get current UTC time
         CURRENT_HOUR=$(date -u +%H)
         CURRENT_MINUTE=$(date -u +%M)
@@ -61,76 +63,69 @@ jobs:
         if [ -n "$MANUAL_USER" ]; then
           echo "Manual user specified: $MANUAL_USER"
           # Look up user in config file
-          MANUAL_USER="$MANUAL_USER" python3 << 'EOF'
-          import json
-          import os
-          import sys
-          
-          try:
-              manual_user = os.environ.get('MANUAL_USER', '')
-              
-              if not manual_user:
-                  print("❌ MANUAL_USER environment variable not set")
-                  sys.exit(1)
-              
-              github_output = os.environ.get('GITHUB_OUTPUT')
-              if not github_output:
-                  print("❌ GITHUB_OUTPUT environment variable not set")
-                  sys.exit(1)
-              
-              config_path = '.github/workflows/ipo-scheduler-config.json'
-              if not os.path.exists(config_path):
-                  print(f"❌ Config file not found: {config_path}")
-                  sys.exit(1)
-              
-              # Read config file
-              with open(config_path, 'r') as f:
-                  config = json.load(f)
-              
-              # Find user in config
-              matched_user = None
-              for user in config['users']:
-                  if user['user_id'] == manual_user:
-                      matched_user = user
-                      break
-              
-              if matched_user:
-                  user_id = matched_user['user_id']
-                  user_secret = matched_user['user_secret']
-                  user_display_name = matched_user['name']
-                  
-                  # Write to GITHUB_OUTPUT
-                  with open(github_output, 'a') as f:
-                      f.write(f"user_id={user_id}\n")
-                      f.write(f"user_secret={user_secret}\n")
-                      f.write(f"user_display_name={user_display_name}\n")
-                  
-                  print(f"✅ Found user: {user_display_name} ({user_id})")
-              else:
-                  print(f"❌ User '{manual_user}' not found in config file")
-                  print(f"Available users: {[u['user_id'] for u in config['users']]}")
-                  # Write empty outputs
-                  with open(github_output, 'a') as f:
-                      f.write("user_id=\n")
-                      f.write("user_secret=\n")
-                      f.write("user_display_name=\n")
-                  sys.exit(1)
-          except Exception as e:
-              print(f"❌ Error in Python script: {str(e)}")
-              import traceback
-              traceback.print_exc()
-              sys.exit(1)
-          EOF
-          
-          if [ $? -ne 0 ]; then
-            echo "❌ Failed to determine user from manual input"
-            exit 1
-          fi
-          exit 0
-        fi
+          MANUAL_USER="$MANUAL_USER" python3 << 'PYTHON_EOF'
+        import json
+        import os
+        import sys
         
-        # Read config file and determine user based on current time
-        python3 << 'EOF'
+        try:
+            manual_user = os.environ.get('MANUAL_USER', '')
+            
+            if not manual_user:
+                print("❌ MANUAL_USER environment variable not set")
+                sys.exit(1)
+            
+            github_output = os.environ.get('GITHUB_OUTPUT')
+            if not github_output:
+                print("❌ GITHUB_OUTPUT environment variable not set")
+                sys.exit(1)
+            
+            config_path = '.github/workflows/ipo-scheduler-config.json'
+            if not os.path.exists(config_path):
+                print(f"❌ Config file not found: {config_path}")
+                sys.exit(1)
+            
+            # Read config file
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Find user in config
+            matched_user = None
+            for user in config['users']:
+                if user['user_id'] == manual_user:
+                    matched_user = user
+                    break
+            
+            if matched_user:
+                user_id = matched_user['user_id']
+                user_secret = matched_user['user_secret']
+                user_display_name = matched_user['name']
+                
+                # Write to GITHUB_OUTPUT
+                with open(github_output, 'a') as f:
+                    f.write(f"user_id={user_id}\n")
+                    f.write(f"user_secret={user_secret}\n")
+                    f.write(f"user_display_name={user_display_name}\n")
+                
+                print(f"✅ Found user: {user_display_name} ({user_id})")
+            else:
+                print(f"❌ User '{manual_user}' not found in config file")
+                print(f"Available users: {[u['user_id'] for u in config['users']]}")
+                # Write empty outputs
+                with open(github_output, 'a') as f:
+                    f.write("user_id=\n")
+                    f.write("user_secret=\n")
+                    f.write("user_display_name=\n")
+                sys.exit(1)
+        except Exception as e:
+            print(f"❌ Error in Python script: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+        PYTHON_EOF
+        else
+          # Read config file and determine user based on current time
+          python3 << 'PYTHON_EOF'
         import json
         import os
         import sys
@@ -190,7 +185,8 @@ jobs:
             import traceback
             traceback.print_exc()
             sys.exit(1)
-        EOF
+        PYTHON_EOF
+        fi
 
   check-ipo-status:
     runs-on: ubuntu-latest
