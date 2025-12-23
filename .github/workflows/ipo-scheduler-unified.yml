@@ -60,11 +60,45 @@ jobs:
         MANUAL_USER="${{ github.event.inputs.user_name }}"
         if [ -n "$MANUAL_USER" ]; then
           echo "Manual user specified: $MANUAL_USER"
-          # Extract user number from user_name (e.g., user11 -> 11)
-          USER_NUM=$(echo "$MANUAL_USER" | sed 's/user//')
-          echo "user_id=$MANUAL_USER" >> $GITHUB_OUTPUT
-          echo "user_secret=USER${USER_NUM}_NAME" >> $GITHUB_OUTPUT
-          echo "user_display_name=$MANUAL_USER" >> $GITHUB_OUTPUT
+          # Look up user in config file
+          MANUAL_USER="$MANUAL_USER" python3 << 'EOF'
+          import json
+          import os
+          
+          manual_user = os.environ.get('MANUAL_USER', '')
+          
+          # Read config file
+          with open('.github/workflows/ipo-scheduler-config.json', 'r') as f:
+              config = json.load(f)
+          
+          # Find user in config
+          matched_user = None
+          for user in config['users']:
+              if user['user_id'] == manual_user:
+                  matched_user = user
+                  break
+          
+          if matched_user:
+              user_id = matched_user['user_id']
+              user_secret = matched_user['user_secret']
+              user_display_name = matched_user['name']
+              
+              # Write to GITHUB_OUTPUT
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"user_id={user_id}\n")
+                  f.write(f"user_secret={user_secret}\n")
+                  f.write(f"user_display_name={user_display_name}\n")
+              
+              print(f"✅ Found user: {user_display_name} ({user_id})")
+          else:
+              print(f"❌ User '{manual_user}' not found in config file")
+              # Write empty outputs
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("user_id=\n")
+                  f.write("user_secret=\n")
+                  f.write("user_display_name=\n")
+              exit(1)
+          EOF
           exit 0
         fi
         
@@ -178,9 +212,9 @@ jobs:
             print('❌ USER_NAME not set')
             exit(1)
         
-        # Get user name from workflow dispatch or use secret
-        input_user_name = '${{ github.event.inputs.user_name }}'
-        user_name = input_user_name if input_user_name and input_user_name.strip() else user_name
+        # Note: user_name from secret already contains the actual name (e.g., "sushila")
+        # The workflow_dispatch input is just for selecting which user, not for overriding the name
+        # The secret USER23_NAME should contain the actual name that matches the sheet data
         
         print(f'🚀 Starting IPO application for user: {user_name}')
         print(f'⏰ Time: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}')
