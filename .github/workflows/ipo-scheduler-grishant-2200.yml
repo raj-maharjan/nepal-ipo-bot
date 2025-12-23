@@ -1,15 +1,15 @@
-name: IPO Application Scheduler (Reusable)
+name: IPO Application Scheduler - 10:00 PM
 
 on:
-  workflow_call:
+  schedule:
+    # Run at 10:00 PM NPT every 24 hours (16:15 UTC)
+    - cron: '15 16 * * *'
+  workflow_dispatch:
     inputs:
       user_name:
         description: 'User name to apply IPOs for'
         required: true
-        type: string
-      user_secret_name:
-        description: 'Secret name for the user (e.g., USER11_NAME)'
-        required: true
+        default: 'user18'
         type: string
 
 jobs:
@@ -48,12 +48,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
     
-    - name: Apply IPOs for ${{ inputs.user_name }}
+    - name: Apply IPOs for user18
       env:
         WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        USER_NAME: ${{ secrets[inputs.user_secret_name] }}
+        USER_NAME: ${{ secrets.USER18_NAME }}
       run: |
         python -c "
         import requests
@@ -228,6 +228,4 @@ jobs:
                         'parse_mode': 'HTML'
                     }
                 )
-        "
-
-
+        " 

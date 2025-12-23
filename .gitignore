@@ -56,6 +56,4 @@ Thumbs.db
 
 # Service account keys (sensitive)
 service_account.json
-*.json
-# Exception: Allow workflow config file
-!.github/workflows/ipo-scheduler-config.json 
+*.json 
